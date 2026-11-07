@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * TEMA NEUTRO SEGNAPOSTO — palette definitiva da decidere.
+ * Valori HSL senza hsl(): "H S% L%". Usati da tailwind.config.ts.
+ */
+@layer base {
+  :root {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --radius: 0.6rem;
+
+    --background: 220 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 94%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 9% 44%;
+    --accent: 243 80% 96%;
+    --accent-foreground: 243 60% 40%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 89%;
+    --input: 220 13% 89%;
+    --ring: 243 75% 59%;
+
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 222 30% 25%;
+    --sidebar-accent: 243 80% 96%;
+
+    /* Fasce di mastery */
+    --band-gap: 0 72% 52%;
+    --band-consolidating: 38 92% 48%;
+    --band-mastered: 152 60% 38%;
+    --band-unverified: 220 9% 62%;
+
+    --chart-1: 243 75% 59%;
+    --chart-2: 190 80% 42%;
+    --chart-3: 330 70% 55%;
+    --chart-4: 38 92% 50%;
+  }
+
+  .dark {
+    --background: 224 28% 8%;
+    --foreground: 210 20% 96%;
+    --card: 224 25% 11%;
+    --card-foreground: 210 20% 96%;
+    --popover: 224 25% 11%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 243 85% 68%;
+    --primary-foreground: 224 28% 8%;
+    --secondary: 223 20% 18%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 223 20% 16%;
+    --muted-foreground: 218 11% 65%;
+    --accent: 243 40% 22%;
+    --accent-foreground: 243 90% 85%;
+    --destructive: 0 70% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 223 18% 20%;
+    --input: 223 18% 20%;
+    --ring: 243 85% 68%;
+    --sidebar: 224 25% 10%;
+    --sidebar-foreground: 215 20% 80%;
+    --sidebar-accent: 243 40% 20%;
+    --band-gap: 0 75% 60%;
+    --band-consolidating: 40 92% 56%;
+    --band-mastered: 152 55% 48%;
+    --band-unverified: 220 9% 55%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+}
