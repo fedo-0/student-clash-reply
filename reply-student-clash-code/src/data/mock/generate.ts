@@ -5,18 +5,20 @@
  */
 import type {
   ChatMessage, ChatSession, Course, CourseStaff, Document, DocumentChunk, Enrollment, ExamDraft, ExamRecord,
-  ExamSession, LearningEvent, Mastery, MasterySnapshot, Notification, Opportunity,
+  ExamSession, ExamPosting, ExamMatch, LearningEvent, Mastery, MasterySnapshot, Notification, Opportunity,
   OpportunityMatch, Prerequisite, Profile, QuestionCluster, Quiz, QuizQuestion, RoleplayScenario, StudentGoal,
   StudentProject, StudentQuestion, StudentSkill, Tenant, Topic, TopicPrerequisite, EventSource, OpportunityKind,
 } from '@/types/database';
 import { createRng, gaussian, pick, randInt, stableUuid } from '@/lib/random';
 import { replayEvents } from '@/lib/mastery';
+import { computeExamMatch } from '@/lib/examMatch';
 import { clamp, round } from '@/lib/utils';
 import {
   CHUNKS, COURSES, DOCUMENTS, GIULIA_KEY, GIULIA_PROJECTS, GIULIA_RECORDS, GIULIA_SKILLS, OPPORTUNITIES,
   QUESTION_CLUSTERS, STUDENTS, TEACHERS, TENANT,
 } from './fixtures';
 import { ROLEPLAY } from './roleplay';
+import { EXAM_POSTINGS } from './examPostings';
 
 export const SEED = 20261107;
 export const DEMO_TODAY = new Date('2026-11-07T12:00:00+01:00');
@@ -53,6 +55,8 @@ export interface MockDb {
   studentQuestions: StudentQuestion[];
   questionClusters: QuestionCluster[];
   roleplayScenarios: RoleplayScenario[];
+  examPostings: ExamPosting[];
+  examMatches: ExamMatch[];
   opportunities: Opportunity[];
   opportunityMatches: OpportunityMatch[];
   notifications: Notification[];
@@ -320,6 +324,24 @@ export function generateMockDb(): MockDb {
     };
   });
 
+  // ---- Annunci d'esame ---------------------------------------------------
+  const examPostings: ExamPosting[] = EXAM_POSTINGS.map((p) => {
+    const def = COURSES.find((c) => c.key === p.course)!;
+    return {
+      ...base, id: id('exam_postings', p.course), course_id: courseIdByKey[p.course], created_by: id('profiles', def.teacher),
+      title: p.title, about: p.about, level: p.level, format: p.format, learning_outcomes: p.learning_outcomes,
+      requirements: p.requirements.map((r, i) => ({
+        id: `${p.course}-r${i}`, kind: r.kind, label: r.label, description: r.description,
+        importance: r.importance ?? 'required',
+        weight: r.kind === 'competence' ? r.weight ?? 0.2 : (r.importance ?? 'required') === 'required' ? 1 : 0.5,
+        topic_ids: r.topics?.map((k) => topicIdByKey[k]), exam_name: r.exam_name,
+      })),
+      materials: p.materials.map((m, i) => ({ ...m, id: `${p.course}-m${i}`, document_id: null })),
+      status: 'published', published_at: p.published_at, updated_at: p.published_at,
+    };
+  });
+  const examMatches: ExamMatch[] = [];
+
   // ---- Opportunità --------------------------------------------------------
   const opportunities: Opportunity[] = OPPORTUNITIES.map((o, i) => ({
     ...base, id: id('opportunities', `${i}`), kind: o.kind as OpportunityKind, title: o.title, organization: o.organization,
@@ -334,8 +356,34 @@ export function generateMockDb(): MockDb {
     { ...base, id: id('notifications', 'r1'), user_id: rossi, kind: 'alert', title: 'Lacuna di classe su Dualità', body: 'Oltre metà della classe è in fascia rossa.', link: '/teacher/class', read_at: null, created_at: '2026-11-06T08:00:00Z' },
   ];
 
+  // ---- Corrispondenze già generate dai compagni di Giulia (solo per gli aggregati del docente).
+  //      Lo score è calcolato davvero; il testo è un segnaposto. Ultimo uso del PRNG: non altera la storia.
+  for (const posting of examPostings.filter((p) => p.course_id === courseIdByKey.ro || p.course_id === courseIdByKey.stat)) {
+    for (const e of enrollments.filter((x) => x.course_id === posting.course_id && x.student_id !== giuliaId)) {
+      if (rng() > 0.6) continue;
+      const m = computeExamMatch({
+        posting, mastery: mastery.filter((x) => x.student_id === e.student_id), topics, courses,
+        // profilo sintetico: propedeutici superati con voto casuale, qualche skill
+        skills: ['Excel', 'Python', 'Algebra lineare', 'R'].filter(() => rng() < 0.5).map((name) => ({
+          ...base, id: id('student_skills', `${e.student_id}.${name}`), student_id: e.student_id, name, level: randInt(rng, 2, 4), source: 'manual' as const,
+        })),
+        projects: [],
+        records: ['Analisi Matematica I', 'Geometria e Algebra Lineare'].map((course_name) => ({
+          ...base, id: id('exam_records', `${e.student_id}.${course_name}`), student_id: e.student_id, course_id: null, course_name,
+          cfu: 9, grade: randInt(rng, 18, 30), honors: false, passed_at: '2025-02-01', external_id: null,
+        })),
+      });
+      examMatches.push({
+        ...base, id: id('exam_matches', `${posting.id}.${e.student_id}`), posting_id: posting.id, student_id: e.student_id,
+        score: m.score, components: m.components, items: m.items.map(({ requirement: _r, ...i }) => i),
+        summary: '', strengths: [], weaknesses: [], improvements: [], strategy: [], generated_at: '2026-11-03T18:00:00Z',
+      });
+    }
+  }
+
   return {
     tenant, profiles, courses, courseStaff, enrollments, examRecords, examSessions, prerequisites, topics, topicPrerequisites,
+    examPostings, examMatches,
     learningEvents, mastery, masterySnapshots, studentGoals, studentSkills, studentProjects, documents, documentChunks,
     quizzes, quizQuestions, examDrafts, chatSessions, chatMessages, studentQuestions, questionClusters, roleplayScenarios,
     opportunities, opportunityMatches, notifications,

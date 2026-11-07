@@ -68,7 +68,7 @@ export function StudentHomePage() {
         <section className="xl:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Prossimi esami</h2>
-            <Button variant="link" size="sm" asChild><Link to="/student/grades">Libretto <ArrowRight /></Link></Button>
+            <Button variant="link" size="sm" asChild><Link to="/student/exams">Tutti gli esami <ArrowRight /></Link></Button>
           </div>
           {isLoading ? <LoadingBlock rows={2} /> : (
             <div className="grid gap-4 md:grid-cols-2">

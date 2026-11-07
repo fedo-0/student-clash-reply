@@ -250,6 +250,75 @@ export function createMockApi(): DataApi {
     },
 
 
+    getStudentExamPostings: (studentId) => {
+      const pending = db.examRecords.filter((r) => r.student_id === studentId && !r.passed_at && r.course_id);
+      const views = pending
+        .map((r) => {
+          const posting = db.examPostings.find((p) => p.course_id === r.course_id && p.status === 'published');
+          if (!posting) return null;
+          const course = db.courses.find((c) => c.id === r.course_id)!;
+          const topics = topicsOf(course.id);
+          const enrolled = db.enrollments.some((e) => e.student_id === studentId && e.course_id === course.id && e.active);
+          return {
+            posting, course, record: r,
+            teacher: db.profiles.find((p) => p.id === posting.created_by) ?? null,
+            nextSession: nextSessionOf(course.id),
+            match: db.examMatches.find((m) => m.posting_id === posting.id && m.student_id === studentId) ?? null,
+            readiness: enrolled && topics.length ? computeReadiness(topics, masteryOf(studentId, topics)).readiness : null,
+          };
+        })
+        .filter((v): v is NonNullable<typeof v> => !!v)
+        .sort((a, b) => (a.nextSession?.date ?? '9').localeCompare(b.nextSession?.date ?? '9'));
+      return delay(views);
+    },
+
+    getExamMatchInputs: (studentId, postingId) => {
+      const posting = db.examPostings.find((p) => p.id === postingId)!;
+      return delay({
+        posting,
+        mastery: db.mastery.filter((m) => m.student_id === studentId),
+        topics: db.topics,
+        courses: db.courses,
+        skills: db.studentSkills.filter((s) => s.student_id === studentId),
+        projects: db.studentProjects.filter((p) => p.student_id === studentId),
+        records: db.examRecords.filter((r) => r.student_id === studentId),
+      }, 120);
+    },
+
+    saveExamMatch: async (match) => {
+      const existing = db.examMatches.findIndex((m) => m.posting_id === match.posting_id && m.student_id === match.student_id);
+      const row = { ...match, id: stableUuid(`exam_match:${match.posting_id}:${match.student_id}`), tenant_id: db.tenant.id, created_at: match.generated_at };
+      if (existing >= 0) db.examMatches[existing] = row;
+      else db.examMatches.push(row);
+      return delay(row, 60);
+    },
+
+    getTeacherExamPostings: (teacherId) => {
+      const ids = new Set(teacherCourseIds(teacherId));
+      return delay(
+        db.examPostings
+          .filter((p) => ids.has(p.course_id))
+          .map((posting) => {
+            const ms = db.examMatches.filter((m) => m.posting_id === posting.id);
+            return {
+              posting,
+              course: db.courses.find((c) => c.id === posting.course_id)!,
+              topics: topicsOf(posting.course_id),
+              matchesCount: ms.length,
+              avgMatch: ms.length ? round(ms.reduce((s, m) => s + m.score, 0) / ms.length, 0) : null,
+            };
+          }),
+      );
+    },
+
+    updateExamPosting: async (posting) => {
+      const i = db.examPostings.findIndex((p) => p.id === posting.id);
+      const row = { ...posting, updated_at: new Date().toISOString() };
+      if (i >= 0) db.examPostings[i] = row;
+      else db.examPostings.push(row);
+      return delay(row, 150);
+    },
+
     getNotifications: (userId) => delay(db.notifications.filter((n) => n.user_id === userId).sort((a, b) => b.created_at.localeCompare(a.created_at))),
 
     getCourse: (courseId) => delay(db.courses.find((c) => c.id === courseId)!),

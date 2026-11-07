@@ -398,7 +398,7 @@ function MasteryImpact({ config, score, names }: { config: Config; score: Rolepl
         )}
         <div className="flex flex-wrap gap-2">
           {review && <Button size="sm" asChild><Link to={`/student/tutor?course=${summary.course.id}&topic=${review}&mode=guided_gap`}><Bot /> Ripassa {names[review]} con il tutor</Link></Button>}
-          <Button size="sm" variant="outline" asChild><Link to={`/student/exams/${summary.course.id}`}>Vai alla readiness d'esame <ArrowRight /></Link></Button>
+          <Button size="sm" variant="outline" asChild><Link to={`/student/exams/${summary.course.id}/preparazione`}>Vai alla readiness d'esame <ArrowRight /></Link></Button>
         </div>
       </CardContent>
     </Card>
