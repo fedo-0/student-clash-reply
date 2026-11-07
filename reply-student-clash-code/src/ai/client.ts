@@ -5,7 +5,8 @@
  *
  * Regola: i numeri (mastery, readiness, Monte Carlo, ...) li calcola src/lib; l'LLM scrive solo testo.
  */
-import type { ChatMode, Citation, QuestionType, RoleplayScenario, Topic } from '@/types/database';
+import type { ChatMode, Citation, QuestionType, RoleplayAttitude, RoleplayDifficulty, RoleplayScenario, Topic } from '@/types/database';
+import { availableFacts, isEmpathetic, normalize, type RoleplayScore } from '@/lib/roleplay';
 import type { TopicDistribution } from '@/lib/classStats';
 import type { PredictionResult } from '@/lib/prediction';
 import type { ReadinessResult } from '@/lib/readiness';
@@ -34,7 +35,7 @@ export interface Recommendation {
   title: string;
   reason: string;
   minutes: number;
-  action: 'tutor' | 'quiz' | 'simulation' | 'group' | 'review';
+  action: 'tutor' | 'quiz' | 'simulation' | 'review';
   link: string;
 }
 
@@ -57,12 +58,25 @@ export interface LessonSuggestion {
   example: string;
 }
 
+export type RoleplayChunk = { type: 'token'; value: string } | { type: 'fact'; id: string };
+
+export interface RoleplayRequest {
+  scenario: RoleplayScenario;
+  difficulty: RoleplayDifficulty;
+  attitude: RoleplayAttitude;
+  history: ChatTurn[];
+  message: string;
+  /** id dei fatti già emersi */
+  revealed: string[];
+}
+
+/** Il report testuale scritto dall'AI (i punteggi li calcola src/lib/roleplay.ts). */
 export interface RoleplayReport {
-  totalScore: number;
-  criteria: { criterion: string; score: number; comment: string }[];
-  factsDiscovered: string[];
-  factsMissed: string[];
   feedback: string;
+  strengths: string[];
+  improvements: string[];
+  missedQuestions: string[];
+  nextStep: string;
 }
 
 export interface AiClient {
@@ -76,8 +90,9 @@ export interface AiClient {
   explainPrediction(req: { result: PredictionResult; examTitle: string; topicNames: Record<string, string>; exerciseTopics: Record<string, string[]> }): Promise<string>;
   lessonSuggestions(req: { courseName: string; distributions: TopicDistribution[] }): Promise<LessonSuggestion[]>;
   summarizeCluster(req: { title: string; questions: string[] }): Promise<string>;
-  roleplayReply(req: { scenario: RoleplayScenario; history: ChatTurn[]; message: string }): AsyncGenerator<string>;
-  evaluateRoleplay(req: { scenario: RoleplayScenario; history: ChatTurn[] }): Promise<RoleplayReport>;
+  /** Il personaggio risponde: stream di testo + eventi 'fact' quando emerge un'informazione nascosta. */
+  roleplayReply(req: RoleplayRequest): AsyncGenerator<RoleplayChunk>;
+  evaluateRoleplay(req: { scenario: RoleplayScenario; difficulty: RoleplayDifficulty; attitude: RoleplayAttitude; score: RoleplayScore; topicNames: Record<string, string> }): Promise<RoleplayReport>;
   extractCvSkills(fileName: string): Promise<{ name: string; level: number }[]>;
 }
 
@@ -131,10 +146,11 @@ const mockClient: AiClient = {
       const unverified = c.readiness.items.find((i) => i.band === 'unverified');
       if (unverified)
         recs.push({ id: `quiz-${unverified.topic.id}`, title: `Quiz rapido: ${unverified.topic.name}`, reason: unverified.practiced ? 'Hai pochi dati su questo argomento: 10 domande per verificarlo.' : 'Non l\'hai ancora praticato: parti da un quiz diagnostico.', minutes: 10, action: 'quiz', link: `/student/quiz?course=${c.id}&topic=${unverified.topic.id}` });
-      if (recs.length >= 3) break;
+      if (recs.length >= 2) break;
     }
-    recs.push({ id: 'group', title: 'Sessione con il gruppo di studio', reason: 'Mercoledì pomeriggio siete tutti disponibili: chi è forte su Simplesso può aiutare gli altri.', minutes: 60, action: 'group', link: '/student/group' });
-    return recs.slice(0, 3);
+    const next = sorted[0];
+    if (next) recs.push({ id: 'simulation', title: `Simula un caso di ${next.name}`, reason: `Un cliente interpretato dall'AI ti porta un problema reale: applichi gli argomenti dell'esame e il risultato aggiorna la tua readiness.`, minutes: 15, action: 'simulation', link: `/student/roleplay?course=${next.id}` });
+    return [...recs.slice(0, 2), ...recs.filter((r) => r.action === 'simulation')].slice(0, 3);
   },
 
   async gradesComment({ sim, target, readinessByCourse }) {
@@ -230,41 +246,95 @@ const mockClient: AiClient = {
     return `${questions.length} domande su "${title}". Il dubbio ricorrente riguarda le regole operative più che la teoria.`;
   },
 
-  async *roleplayReply({ scenario, history, message }) {
-    await sleep(500);
-    const m = message.toLowerCase();
-    const facts = scenario.hidden_facts;
-    let reply: string;
-    if (/braccio|irradia|spost|dove/.test(m)) reply = `Adesso che me lo chiede… sì, ${facts[0].toLowerCase()}. Pensavo fosse un dolore muscolare.`;
-    else if (/fum|sigarett/.test(m)) reply = `Eh, ${facts[1].toLowerCase()}. Lo so, lo so…`;
-    else if (/famil|padre|madre|genitor/.test(m)) reply = `${facts[2]}. Non ci avevo pensato.`;
-    else if (/sud|freddo|nausea/.test(m)) reply = `Sì, ${facts[3].toLowerCase()}, mi ero spaventato.`;
-    else if (/farmac|pillol|terapia|medicin/.test(m)) reply = `${facts[4]}.`;
-    else if (/camion|furgon|capacit/.test(m)) reply = facts[0];
-    else if (/client|orari|mattin/.test(m)) reply = facts[1];
-    else if (/autist|ore|turn/.test(m)) reply = facts[2];
-    else if (/deposit|magazz/.test(m)) reply = facts[3];
-    else reply = history.length < 2 ? 'Non so bene cosa dirle… mi chieda lei.' : 'Mah, non saprei. Cos\'altro le serve sapere?';
-    yield* streamText(reply, 20);
+  async *roleplayReply({ scenario, difficulty, attitude, history, message, revealed }) {
+    await sleep(450);
+    const msg = normalize(message);
+    const turn = history.filter((h) => h.role === 'user').length + 1;
+    const pool = availableFacts(scenario, difficulty).filter((f) => !revealed.includes(f.id));
+    // a difficoltà avanzata le domande vaghe non bastano
+    const precise = difficulty < 3 || message.trim().length >= 20;
+    const maxPerTurn = difficulty === 1 ? 3 : difficulty === 2 ? 2 : 1;
+    let matched = precise ? pool.filter((f) => f.keywords.some((k) => msg.includes(normalize(k)))).slice(0, maxPerTurn) : [];
+
+    // l'empatia calma un personaggio aggressivo
+    const calmedBefore = attitude === 'aggressive' && history.some((h) => h.role === 'user' && isEmpathetic(h.content));
+    const calmed = attitude === 'aggressive' && !calmedBefore && isEmpathetic(message);
+    const tone: RoleplayAttitude = calmed || calmedBefore ? 'moderate' : attitude;
+    const proposesSolution = scenario.solution_keywords.some((k) => msg.includes(normalize(k)));
+    const pickOf = (arr: string[]) => arr[turn % arr.length];
+    const PREFIX: Record<RoleplayAttitude, string[]> = {
+      gentle: ['Certo, volentieri.', 'Ottima domanda.', 'Sì, gliene parlo subito.'],
+      moderate: ['Allora…', 'Mah, sì.', 'Dunque.'],
+      aggressive: ["Gliel'ho già detto, comunque:", 'Ma è proprio necessario? Va bene:', 'Il tempo è denaro, quindi in breve:'],
+    };
+    const DEFLECT: Record<RoleplayAttitude, string[]> = {
+      gentle: ['Non saprei bene cosa dirle… mi faccia lei le domande che servono.', 'Mi scusi, non ho capito bene: cosa le serve sapere esattamente?'],
+      moderate: ['Non capisco dove vuole arrivare. Cosa le serve di preciso?', 'Mah, non saprei. Mi chieda qualcosa di più concreto.'],
+      aggressive: ['Mi sta facendo perdere tempo. Faccia domande precise!', 'Non sono qui per la teoria, voglio risposte.', 'Ma lei ha già fatto questo lavoro?'],
+    };
+    const parts: string[] = [];
+    if (calmed) parts.push('Va bene… mi scusi, sono un po’ nervoso. Mi chieda pure.');
+
+    if (matched.length) {
+      parts.push(`${pickOf(PREFIX[tone])} ${matched.map((f) => f.reply).join(' ')}`);
+    } else if (difficulty === 1 && pool.length && turn % 2 === 0) {
+      matched = [pool[0]];
+      parts.push(`Ah, forse è utile dirle anche questo: ${pool[0].reply}`);
+    } else if (!calmed && !proposesSolution) {
+      parts.push(pickOf(DEFLECT[tone]));
+    }
+
+    if (proposesSolution) {
+      parts.push({ gentle: 'Interessante! Mi spiega meglio come funzionerebbe?', moderate: 'Ok, ma in pratica cosa cambia per me?', aggressive: 'Belle parole. Mi faccia vedere i risultati concreti.' }[tone]);
+    }
+    if (difficulty === 3 && turn >= 2 && turn % 3 === 2 && scenario.objections.length) {
+      parts.push(scenario.objections[Math.floor(turn / 3) % scenario.objections.length]);
+    }
+
+    for (const f of matched) yield { type: 'fact', id: f.id };
+    for await (const t of streamText(parts.join(' '), 18)) yield { type: 'token', value: t };
   },
 
-  async evaluateRoleplay({ scenario, history }) {
-    await sleep(1200);
-    const userText = history.filter((h) => h.role === 'user').map((h) => h.content.toLowerCase()).join(' ');
-    const assistantText = history.filter((h) => h.role === 'assistant').map((h) => h.content.toLowerCase()).join(' ');
-    const discovered = scenario.hidden_facts.filter((f) => assistantText.includes(f.toLowerCase().slice(0, 18)));
-    const ratio = discovered.length / scenario.hidden_facts.length;
-    const criteria = scenario.rubric.map((r, i) => {
-      const s = Math.round(Math.min(100, 45 + ratio * 45 + (userText.length > 200 ? 8 : 0) - i * 3));
-      return { criterion: r.criterion, score: s, comment: s >= 75 ? 'Ben gestito.' : s >= 55 ? 'Discreto, ma con domande poco mirate.' : 'Da migliorare: approccio poco strutturato.' };
-    });
-    const total = Math.round(criteria.reduce((s, c, i) => s + c.score * scenario.rubric[i].weight, 0));
+  async evaluateRoleplay({ scenario, difficulty, attitude, score, topicNames }) {
+    await sleep(1100);
+    const sorted = [...score.criteria].sort((a, b) => b.score - a.score);
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    const ratio = score.factsDiscovered.length / Math.max(1, score.factsDiscovered.length + score.factsMissed.length);
+    const who = scenario.counterpart_label.toLowerCase();
+    const topics = [...score.topicScores].sort((a, b) => b.score - a.score);
+    const bestTopic = topics[0];
+    const worstTopic = topics[topics.length - 1];
+    const strengths = [
+      bestTopic && bestTopic.score >= 70 ? `Su ${topicNames[bestTopic.topicId]} hai fatto le domande giuste: sai riconoscerlo in un caso reale.` : null,
+      best && best.score >= 60 ? `${best.criterion}: ${best.description.toLowerCase()}` : null,
+      ratio >= 0.6 ? `Hai fatto emergere ${score.factsDiscovered.length} informazioni chiave su ${score.factsDiscovered.length + score.factsMissed.length}.` : null,
+      score.stats.empathy > 0 ? 'Hai mostrato attenzione ed empatia verso il tuo interlocutore.' : null,
+    ].filter(Boolean) as string[];
+    const improvements = [
+      worstTopic && worstTopic.score < 60 && worstTopic !== bestTopic ? `${topicNames[worstTopic.topicId]}: nel caso non l'hai riconosciuto. È lo stesso argomento che ti servirà all'esame.` : null,
+      worst && worst.score < 70 ? `${worst.criterion}: ${worst.description.toLowerCase()}` : null,
+      score.stats.openQuestions < score.stats.questions / 2 ? 'Usa più domande aperte ("Come…", "Mi racconti…") prima di quelle chiuse.' : null,
+      score.stats.solutionMentions === 0 ? `Chiudi sempre con una proposta concreta e i prossimi passi per il ${who}.` : null,
+      attitude === 'aggressive' && score.stats.empathy === 0 ? 'Con un interlocutore aggressivo riconosci prima la sua frustrazione ("Capisco che…"): si calma e collabora di più.' : null,
+    ].filter(Boolean) as string[];
+    const nextStep = score.total >= 75 && difficulty < 3
+      ? `Ottimo risultato: prova il livello ${difficulty === 1 ? 'Intermedio' : 'Avanzato'}.`
+      : score.total >= 75
+        ? `Hai superato il livello più difficile${attitude === 'aggressive' ? ' con un ' + who + ' aggressivo' : ''}: ora punta a far emergere tutte le informazioni del caso.`
+        : attitude !== 'aggressive' && score.total >= 60
+        ? `Riprova con un ${who} aggressivo per allenare la gestione della relazione.`
+        : 'Ripeti lo stesso scenario usando i suggerimenti qui sotto: vedrai emergere più informazioni.';
     return {
-      totalScore: total,
-      criteria,
-      factsDiscovered: discovered,
-      factsMissed: scenario.hidden_facts.filter((f) => !discovered.includes(f)),
-      feedback: ratio >= 0.6 ? 'Hai fatto emergere la maggior parte delle informazioni chiave con domande pertinenti.' : 'Hai lasciato inesplorate informazioni importanti: usa uno schema strutturato e fai domande aperte.',
+      feedback: score.total >= 75
+        ? `Consulenza riuscita. Hai condotto il colloquio in modo strutturato e hai raccolto quasi tutto ciò che serviva per lavorare sul caso.`
+        : score.total >= 50
+          ? `Buona base, ma alcune informazioni importanti sono rimaste nascoste: con domande più mirate avresti avuto un quadro completo del caso.`
+          : `Il colloquio è rimasto in superficie: prima di proporre soluzioni, dedica più tempo a capire la situazione del ${who}.`,
+      strengths: strengths.length ? strengths : ['Hai avviato il colloquio: è il primo passo.'],
+      improvements,
+      missedQuestions: score.factsMissed.map((f) => f.hint),
+      nextStep,
     };
   },
 

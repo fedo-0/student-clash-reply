@@ -298,35 +298,6 @@ export const QUESTION_CLUSTERS: { course: string; topic: string; title: string; 
   },
 ];
 
-export const ROLEPLAY = [
-  {
-    course: 'sem',
-    title: 'Paziente con dolore toracico',
-    description: 'Pronto soccorso: raccogli l\'anamnesi di un paziente di 58 anni con dolore toracico e imposta l\'esame obiettivo.',
-    persona: { name: 'Sig. Franco Dossi', age: 58, role: 'Paziente', personality: 'Ansioso, minimizza i sintomi, risponde in modo vago se non incalzato.', opening_line: 'Dottore, guardi, sarà la solita digestione… però stamattina mi ha preso proprio qui, al petto.' },
-    hidden_facts: ['Il dolore si irradia al braccio sinistro', 'È fumatore da 30 anni (20 sigarette/die)', 'Il padre è morto di infarto a 60 anni', 'Ha sudato freddo durante l\'episodio', 'Assume un antipertensivo ma lo dimentica spesso'],
-    rubric: [
-      { criterion: 'Anamnesi del dolore (OPQRST)', weight: 0.3, description: 'Insorgenza, qualità, irradiazione, durata, fattori scatenanti.' },
-      { criterion: 'Fattori di rischio', weight: 0.25, description: 'Fumo, familiarità, ipertensione, dislipidemia, diabete.' },
-      { criterion: 'Comunicazione ed empatia', weight: 0.2, description: 'Domande aperte, rassicurazione, linguaggio chiaro.' },
-      { criterion: 'Ragionamento clinico', weight: 0.25, description: 'Ipotesi diagnostiche e priorità degli accertamenti.' },
-    ],
-  },
-  {
-    course: 'ro',
-    title: 'Cliente: ottimizzare le consegne',
-    description: 'Sei un consulente: il titolare di un\'azienda di distribuzione vuole ridurre i costi di consegna. Fai emergere i vincoli e proponi un modello.',
-    persona: { name: 'Dott. Paolo Venturi', age: 49, role: 'Titolare di Venturi Logistica', personality: 'Pragmatico, impaziente, poco tecnico; vuole numeri e non formule.', opening_line: 'Allora, mi hanno detto che lei con la matematica mi fa risparmiare. Ho 4 furgoni e i costi del gasolio mi stanno uccidendo.' },
-    hidden_facts: ['I furgoni hanno capacità diverse (2 grandi, 2 piccoli)', 'Alcuni clienti accettano consegne solo al mattino', 'Gli autisti non possono superare 8 ore', 'Un deposito secondario è sottoutilizzato'],
-    rubric: [
-      { criterion: 'Raccolta dei requisiti', weight: 0.3, description: 'Obiettivo, vincoli, dati disponibili.' },
-      { criterion: 'Modellazione', weight: 0.3, description: 'Variabili decisionali, funzione obiettivo e vincoli corretti.' },
-      { criterion: 'Comunicazione al cliente', weight: 0.2, description: 'Spiegazione chiara e non tecnica.' },
-      { criterion: 'Proposta di valore', weight: 0.2, description: 'Stima del risparmio e prossimi passi.' },
-    ],
-  },
-];
-
 export const OPPORTUNITIES = [
   { kind: 'internship', title: 'Stage Supply Chain Analyst', organization: 'Logistica Nord S.p.A.', location: 'Milano (ibrido)', skills: ['Excel', 'Python', 'Ricerca Operativa'], degree: ['Ingegneria Gestionale'], deadline: '2026-12-15', description: 'Ottimizzazione delle rotte di distribuzione e analisi dei livelli di scorta.' },
   { kind: 'internship', title: 'Tirocinio Operations Excellence', organization: 'MeccaParts', location: 'Bologna', skills: ['Lean Manufacturing', 'Excel'], degree: ['Ingegneria Gestionale'], deadline: '2027-01-10', description: 'Progetti di miglioramento continuo sulle linee di assemblaggio.' },

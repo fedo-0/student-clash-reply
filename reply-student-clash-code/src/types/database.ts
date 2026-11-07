@@ -326,26 +326,65 @@ export interface QuestionCluster extends Tenanted {
   answered_at: Timestamp | null;
 }
 
+/** 1 = base, 2 = intermedia, 3 = avanzata */
+export type RoleplayDifficulty = 1 | 2 | 3;
+export type RoleplayAttitude = 'gentle' | 'moderate' | 'aggressive';
+
 export interface RoleplayPersona {
   name: string;
   age?: number;
   role: string;
-  personality: string;
-  opening_line: string;
+  /** situazione di partenza vista dallo studente */
+  context: string;
+  /** battuta d'apertura per ciascun atteggiamento */
+  opening_lines: Record<RoleplayAttitude, string>;
+}
+
+/** Informazione nascosta: emerge solo se lo studente fa la domanda giusta. */
+export interface RoleplayFact {
+  id: string;
+  /** topic del corso allenato da questa informazione */
+  topic_id: UUID;
+  /** sintesi mostrata nel report */
+  fact: string;
+  /** come lo dice il personaggio */
+  reply: string;
+  /** parole che, nella domanda dello studente, fanno emergere il fatto */
+  keywords: string[];
+  /** livello minimo di difficoltà in cui il fatto è presente */
+  level: RoleplayDifficulty;
+  /** suggerimento mostrato a difficoltà base */
+  hint: string;
 }
 
 export interface RubricCriterion {
   criterion: string;
   weight: number;
   description: string;
+  /** cosa misura il valutatore */
+  focus: 'discovery' | 'communication' | 'relationship' | 'solution';
 }
 
 export interface RoleplayScenario extends Tenanted {
-  course_id: UUID | null;
+  /** materia per cui lo scenario prepara */
+  course_id: UUID;
+  /** topic del corso allenati dallo scenario */
+  topic_ids: UUID[];
+  degree_program: string | null;
   title: string;
   description: string | null;
+  /** chi interpreta l'AI: cliente, paziente, ... */
+  counterpart_label: string;
+  /** competenze allenate */
+  skills: string[];
+  /** a quale situazione professionale prepara */
+  prepares_for: string;
   persona: RoleplayPersona;
-  hidden_facts: string[];
+  hidden_facts: RoleplayFact[];
+  /** obiezioni che il personaggio solleva a difficoltà avanzata */
+  objections: string[];
+  /** parole che indicano una proposta di soluzione da parte dello studente */
+  solution_keywords: string[];
   rubric: RubricCriterion[];
   created_by: UUID | null;
 }
@@ -356,30 +395,13 @@ export interface RoleplayEvaluation extends Tenanted {
   student_id: UUID;
   total_score: number | null;
   criteria_scores: { criterion: string; score: number; comment: string }[];
+  difficulty: RoleplayDifficulty;
+  attitude: RoleplayAttitude;
   facts_discovered: string[];
   feedback: string | null;
 }
 
 // ---- Ponte / altro ----------------------------------------------------------
-export interface StudyGroup extends Tenanted {
-  course_id: UUID;
-  name: string;
-  coverage: Record<UUID, number> | null;
-}
-
-export interface StudyGroupMember extends Tenanted {
-  group_id: UUID;
-  student_id: UUID;
-  role_label: string | null;
-}
-
-export interface MatchmakingPoolEntry extends Tenanted {
-  course_id: UUID;
-  student_id: UUID;
-  availability: string[];
-  active: boolean;
-}
-
 export interface Opportunity extends Tenanted {
   kind: OpportunityKind;
   title: string;

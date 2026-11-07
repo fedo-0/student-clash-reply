@@ -5,23 +5,23 @@
  */
 import type {
   ChatMessage, ChatSession, Course, CourseStaff, Document, DocumentChunk, Enrollment, ExamDraft, ExamRecord,
-  ExamSession, LearningEvent, MatchmakingPoolEntry, Mastery, MasterySnapshot, Notification, Opportunity,
+  ExamSession, LearningEvent, Mastery, MasterySnapshot, Notification, Opportunity,
   OpportunityMatch, Prerequisite, Profile, QuestionCluster, Quiz, QuizQuestion, RoleplayScenario, StudentGoal,
   StudentProject, StudentQuestion, StudentSkill, Tenant, Topic, TopicPrerequisite, EventSource, OpportunityKind,
 } from '@/types/database';
-import { createRng, gaussian, pick, randInt, shuffle, stableUuid } from '@/lib/random';
+import { createRng, gaussian, pick, randInt, stableUuid } from '@/lib/random';
 import { replayEvents } from '@/lib/mastery';
 import { clamp, round } from '@/lib/utils';
 import {
   CHUNKS, COURSES, DOCUMENTS, GIULIA_KEY, GIULIA_PROJECTS, GIULIA_RECORDS, GIULIA_SKILLS, OPPORTUNITIES,
-  QUESTION_CLUSTERS, ROLEPLAY, STUDENTS, TEACHERS, TENANT,
+  QUESTION_CLUSTERS, STUDENTS, TEACHERS, TENANT,
 } from './fixtures';
+import { ROLEPLAY } from './roleplay';
 
 export const SEED = 20261107;
 export const DEMO_TODAY = new Date('2026-11-07T12:00:00+01:00');
 /** Lunedì delle 6 settimane di semestre simulate. */
 export const WEEKS = ['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02'];
-export const SLOTS = ['lun_pom', 'mar_mat', 'mer_pom', 'gio_mat', 'ven_pom', 'sab_mat'];
 
 const T0 = '2026-09-01T08:00:00.000Z';
 const id = (table: string, key: string) => stableUuid(`${table}:${key}`);
@@ -53,7 +53,6 @@ export interface MockDb {
   studentQuestions: StudentQuestion[];
   questionClusters: QuestionCluster[];
   roleplayScenarios: RoleplayScenario[];
-  matchmakingPool: MatchmakingPoolEntry[];
   opportunities: Opportunity[];
   opportunityMatches: OpportunityMatch[];
   notifications: Notification[];
@@ -309,18 +308,17 @@ export function generateMockDb(): MockDb {
   ];
 
   // ---- Roleplay ----------------------------------------------------------
-  const roleplayScenarios: RoleplayScenario[] = ROLEPLAY.map((r, i) => ({
-    ...base, id: id('roleplay_scenarios', `${i}`), course_id: courseIdByKey[r.course], title: r.title, description: r.description,
-    persona: r.persona, hidden_facts: r.hidden_facts, rubric: r.rubric, created_by: null,
-  }));
-
-  // ---- Matchmaking pool ---------------------------------------------------
-  const matchmakingPool: MatchmakingPoolEntry[] = enrollments
-    .filter((e) => e.course_id === courseIdByKey.ro)
-    .map((e) => ({
-      ...base, id: id('matchmaking_pool', e.id), course_id: e.course_id, student_id: e.student_id, active: true,
-      availability: e.student_id === giuliaId ? ['mer_pom', 'gio_mat', 'sab_mat'] : shuffle(rng, SLOTS).slice(0, randInt(rng, 3, 5)),
-    }));
+  const roleplayScenarios: RoleplayScenario[] = ROLEPLAY.map((r) => {
+    const facts = r.hidden_facts.map(({ topic, ...f }) => ({ ...f, topic_id: topicIdByKey[`${r.course}.${topic}`] }));
+    return {
+      ...base, id: id('roleplay_scenarios', r.key), course_id: courseIdByKey[r.course],
+      topic_ids: [...new Set(facts.map((f) => f.topic_id))],
+      degree_program: COURSES.find((c) => c.key === r.course)!.degree_program,
+      title: r.title, description: r.description, counterpart_label: r.counterpart_label,
+      skills: r.skills, prepares_for: r.prepares_for, persona: r.persona, hidden_facts: facts,
+      objections: r.objections, solution_keywords: r.solution_keywords, rubric: r.rubric, created_by: null,
+    };
+  });
 
   // ---- Opportunità --------------------------------------------------------
   const opportunities: Opportunity[] = OPPORTUNITIES.map((o, i) => ({
@@ -340,7 +338,7 @@ export function generateMockDb(): MockDb {
     tenant, profiles, courses, courseStaff, enrollments, examRecords, examSessions, prerequisites, topics, topicPrerequisites,
     learningEvents, mastery, masterySnapshots, studentGoals, studentSkills, studentProjects, documents, documentChunks,
     quizzes, quizQuestions, examDrafts, chatSessions, chatMessages, studentQuestions, questionClusters, roleplayScenarios,
-    matchmakingPool, opportunities, opportunityMatches, notifications,
+    opportunities, opportunityMatches, notifications,
     meta: { relevantSkills, keys: { giulia: giuliaId, rossi, bianchi: id('profiles', 'bianchi') }, courseIdByKey, topicIdByKey },
   };
 }

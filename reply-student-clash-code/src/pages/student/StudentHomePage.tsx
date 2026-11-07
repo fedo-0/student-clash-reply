@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Bot, BookOpenCheck, Briefcase, CalendarDays, GraduationCap, Sparkles, Target, Users, Theater, BookMarked } from 'lucide-react';
+import { ArrowRight, Bot, BookOpenCheck, Briefcase, CalendarDays, GraduationCap, Sparkles, Target, Theater, BookMarked } from 'lucide-react';
 import { useCurrentUser } from '@/app/AuthContext';
 import { useExamRecords, useOpportunities, useStudentCourses, useStudentGoal } from '@/data/hooks';
 import { ai, type Recommendation } from '@/ai/client';
@@ -16,7 +16,7 @@ import { trendOf } from '@/lib/readiness';
 import { daysUntil, fmtCountdown, fmtDate, today } from '@/lib/dates';
 import { fmt } from '@/lib/utils';
 
-const ACTION_ICON: Record<Recommendation['action'], typeof Bot> = { tutor: Bot, quiz: BookOpenCheck, simulation: Theater, group: Users, review: BookMarked };
+const ACTION_ICON: Record<Recommendation['action'], typeof Bot> = { tutor: Bot, quiz: BookOpenCheck, simulation: Theater, review: BookMarked };
 const OPP_LABEL = { internship: 'Tirocinio', job: 'Lavoro', event: 'Evento', scholarship: 'Borsa' } as const;
 
 export function StudentHomePage() {
@@ -148,11 +148,11 @@ export function StudentHomePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Users className="h-4 w-4" /> Gruppo di studio</CardTitle>
-              <CardDescription>Ricerca Operativa · formato in base alle competenze complementari</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Theater className="h-4 w-4" /> Simulatore di consulenza</CardTitle>
+              <CardDescription>Preparati a un esame applicandone gli argomenti a un caso reale, con un cliente interpretato dall'AI. Il risultato aggiorna il tuo livello.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full" asChild><Link to="/student/group">Apri il gruppo <ArrowRight /></Link></Button>
+              <Button variant="outline" className="w-full" asChild><Link to="/student/roleplay">Inizia una simulazione <ArrowRight /></Link></Button>
             </CardContent>
           </Card>
         </aside>

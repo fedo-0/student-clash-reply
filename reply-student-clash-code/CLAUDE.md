@@ -33,14 +33,28 @@ AI e predizione. Obiettivo: ciclo di feedback da un semestre a pochi giorni.
 **Studente**: Home (prossimi esami, readiness, media vs obiettivo, "Oggi ti consiglio", opportunità,
 gruppo) · Profilo competenze (libretto, CV+skill AI, progetti, radar) · Affinità esame "alla LinkedIn"
 con CTA "Colma con il tutor"/"Fai un quiz" · Tutor AI (RAG con citazioni; libera, guidata su lacuna,
-interrogazione orale) · Simulatore roleplay (persona, fatti nascosti, rubrica, report) · Libretto
+interrogazione orale) · **Simulatore di consulenza** (vedi sotto) · Libretto
 boostato (media ponderata/aritmetica, base di laurea, obiettivo, slider what-if) · Opportunità filtrate.
 **Docente**: Home corsi · Overview classe (heatmap topic×fasce, istogramma readiness, trend,
 engagement) · Checkpoint + suggerimenti AI · Generatore quiz da PDF stile NotebookLM · Predizione voti
 (logistica mastery−difficoltà + Monte Carlo; **i numeri li calcola il codice, l'LLM spiega**) · FAQ
 (cluster di domande anonime + risposta ufficiale).
-**Ponte**: matchmaking gruppi di studio (greedy su complementarità, gruppi 3-5, disponibilità) ·
-loop di feedback quiz→mastery→mappa docente, domande→FAQ→risposta ufficiale→tutor.
+**Ponte**: loop di feedback quiz→mastery→mappa docente, domande→FAQ→risposta ufficiale→tutor.
+**Rimosso**: il gruppo di studio / matchmaking è stato eliminato come funzionalità (decisione del team).
+
+**Simulatore di consulenza** (`src/pages/student/RoleplayPage.tsx`): strumento di **preparazione a una materia**.
+Lo studente sceglie una delle sue materie (`?course=`); l'AI interpreta un cliente/paziente con un caso costruito
+sui **topic del corso**: ogni informazione nascosta (`RoleplayFact.topic_id`) corrisponde a un topic. Scenari in
+`src/data/mock/roleplay.ts`, uno per corso: Ricerca Operativa → Venturi Logistica (modellazione, PLI, grafi, flussi,
+dualità, sensitività), Statistica → campagna marketing (descrittiva, probabilità, stima, test, regressione),
+Semeiotica Medica → paziente con dolore toracico. La pagina mostra il livello attuale dello studente sui topic
+allenati e consiglia la **difficoltà** in base alla readiness (`recommendedDifficulty`); l'**atteggiamento**
+(gentile/moderato/aggressivo) lo sceglie lo studente (l'empatia calma il cliente aggressivo). A fine sessione
+`scoreRoleplay` (in `src/lib/roleplay.ts`) calcola i punteggi per criterio e **per topic**: per ogni topic esercitato
+(almeno un'informazione emersa) si registra un `learning_event` con source `simulation` (peso 0.9, punteggio max 90),
+che aggiorna mastery e readiness; i topic non toccati restano invariati. L'AI scrive solo il feedback.
+Le materie a cui lo studente non è iscritto si possono vedere in anteprima (demo), senza aggiornare il mastery.
+Si entra anche da "Simula un caso reale" nel dettaglio esame e da "Oggi ti consiglio"
 
 ## 5. Vincoli del prototipo
 - Demo navigabile prima di tutto. Niente GDPR/AI Act/SSO/mobile/integrazioni ESSE3-Moodle reali.
@@ -49,7 +63,7 @@ loop di feedback quiz→mastery→mappa docente, domande→FAQ→risposta uffici
 - **AI mock** dietro `src/ai/client.ts` (ritardo simulato, streaming finto). In futuro → Supabase
   Edge Functions. **Nessuna chiave API nel frontend.**
 - **Calcoli deterministici veri** come funzioni pure in `src/lib/` (mastery, readiness, affinità,
-  libretto, Monte Carlo, matchmaking). Mai mockarli.
+  libretto, Monte Carlo, punteggio del simulatore). Mai mockarli.
 - Login demo senza password (scelta utente), utente corrente in `AuthContext`.
 
 ## 6. Stack
@@ -66,7 +80,7 @@ src/index.css              token del tema (variabili CSS, light/dark)
 src/types/database.ts      tipi riga DB (snake_case, come lo schema)
 src/types/domain.ts        tipi derivati per la UI (readiness, affinità, ...)
 src/lib/                   funzioni pure: mastery, readiness, affinity, grades, prediction,
-                           matchmaking, random (PRNG seed), utils (cn)
+                           roleplay (punteggio simulatore), random (PRNG seed), utils (cn)
 src/data/api.ts            interfaccia DataApi + selezione implementazione
 src/data/mock/             generatore dati deterministico + implementazione mock
 src/data/supabase/         stub implementazione Supabase
@@ -101,9 +115,13 @@ il 12/12 (tra 5 settimane), readiness ~58%, lacuna Dualità (23/100), PLI da ver
 Classe RO: 22 studenti, ~59% in rosso su Dualità, domanda 4 del quiz sbagliata dal 61%.
 Predizione scritto 12/12: media ~18,8, ~57% promossi, esercizi critici su Dualità e PLI.
 Loop live: rispondere al "Quiz settimana 3 – Dualità" alza la readiness (58% → 67% con 4 risposte giuste).
+Simulatore RO (Intermedia): facendo emergere obiettivo, flotta, furgone in affitto (dualità) e magazzino (flussi)
+la Dualità passa 23 → 38 e la readiness 58% → 70%.
 
 ## 11. Stato
 - [x] Passo 0 CLAUDE.md · [x] Passo 1 schema SQL + tipi · [x] Passo 2 setup + mock · [x] Passo 3 shell + schermate core
 - Schermate complete: Studente Home, Dettaglio esame (readiness+affinità), Libretto; Docente Home, Overview classe.
-- Schermate impostate ma semplificate: tutor, roleplay, profilo, opportunità, gruppo, quiz, checkpoint,
-  generatore quiz, predizione, FAQ.
+- Simulatore di consulenza completo: preparazione per materia, topic → learning_event, difficoltà, atteggiamento, report.
+- Libretto e Opportunità: confermati dal team così come sono.
+- Schermate impostate ma semplificate: tutor, profilo, quiz, checkpoint, generatore quiz, predizione, FAQ.
+- Direzione: il focus del prototipo è l'**assistente AI** che accompagna lo studente nei vari passi.

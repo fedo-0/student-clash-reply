@@ -74,10 +74,11 @@ export function ReadinessRing({ value, size = 88, stroke = 9, label = 'pronto' }
   );
 }
 
-export function TrendBadge({ delta, suffix = ' pt', period }: { delta: number; suffix?: string; period?: string }) {
-  const Icon = delta > 0.5 ? TrendingUp : delta < -0.5 ? TrendingDown : Minus;
+export function TrendBadge({ delta: raw, suffix = ' pt', period }: { delta: number; suffix?: string; period?: string }) {
+  const delta = Math.round(raw) || 0; // evita "-0"
+  const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
   return (
-    <span className={cn('inline-flex items-center gap-1 text-xs font-medium', delta > 0.5 ? 'text-band-mastered' : delta < -0.5 ? 'text-band-gap' : 'text-muted-foreground')}>
+    <span className={cn('inline-flex items-center gap-1 text-xs font-medium', delta > 0 ? 'text-band-mastered' : delta < 0 ? 'text-band-gap' : 'text-muted-foreground')}>
       <Icon className="h-3.5 w-3.5" />
       {delta > 0 ? '+' : ''}{fmt(delta, 0)}{suffix}{period && <span className="font-normal text-muted-foreground"> {period}</span>}
     </span>

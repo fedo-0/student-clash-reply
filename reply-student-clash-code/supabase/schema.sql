@@ -520,12 +520,19 @@ create index if not exists student_questions_course_idx on student_questions(cou
 create table if not exists roleplay_scenarios (
   id            uuid primary key default gen_random_uuid(),
   tenant_id     uuid not null references tenants(id) on delete cascade,
-  course_id     uuid references courses(id) on delete set null,
+  course_id     uuid not null references courses(id) on delete cascade,  -- materia per cui prepara
+  topic_ids     uuid[] not null default '{}',                             -- topic allenati
+  degree_program text,
   title         text not null,
   description   text,
-  persona       jsonb not null,     -- {name, age, role, personality, opening_line}
-  hidden_facts  jsonb not null default '[]',   -- [string] da far emergere
-  rubric        jsonb not null default '[]',   -- [{criterion, weight, description}]
+  counterpart_label text not null default 'Cliente',   -- Cliente | Paziente | ...
+  skills        text[] not null default '{}',          -- competenze allenate
+  prepares_for  text,                                  -- situazione professionale simulata
+  persona       jsonb not null,     -- {name, age, role, context, opening_lines: {gentle, moderate, aggressive}}
+  hidden_facts  jsonb not null default '[]',   -- [{id, topic_id, fact, reply, keywords[], level 1-3, hint}]
+  objections    jsonb not null default '[]',   -- [string] obiezioni a difficoltà avanzata
+  solution_keywords text[] not null default '{}',
+  rubric        jsonb not null default '[]',   -- [{criterion, weight, description, focus}]
   created_by    uuid references profiles(id) on delete set null,
   created_at    timestamptz not null default now()
 );
@@ -541,6 +548,8 @@ create table if not exists roleplay_evaluations (
   session_id        uuid not null references chat_sessions(id) on delete cascade,
   scenario_id       uuid not null references roleplay_scenarios(id) on delete cascade,
   student_id        uuid not null references profiles(id) on delete cascade,
+  difficulty        smallint not null default 1 check (difficulty between 1 and 3),
+  attitude          text not null default 'moderate' check (attitude in ('gentle','moderate','aggressive')),
   total_score       numeric(5,2),
   criteria_scores   jsonb not null default '[]',   -- [{criterion, score, comment}]
   facts_discovered  jsonb not null default '[]',
@@ -551,36 +560,6 @@ create table if not exists roleplay_evaluations (
 -- -----------------------------------------------------------------------------
 -- 8. Ponte / altro
 -- -----------------------------------------------------------------------------
-create table if not exists study_groups (
-  id          uuid primary key default gen_random_uuid(),
-  tenant_id   uuid not null references tenants(id) on delete cascade,
-  course_id   uuid not null references courses(id) on delete cascade,
-  name        text not null,
-  coverage    jsonb,                   -- {topic_id: max_mastery}
-  created_at  timestamptz not null default now()
-);
-
-create table if not exists study_group_members (
-  id          uuid primary key default gen_random_uuid(),
-  tenant_id   uuid not null references tenants(id) on delete cascade,
-  group_id    uuid not null references study_groups(id) on delete cascade,
-  student_id  uuid not null references profiles(id) on delete cascade,
-  role_label  text,                    -- es. "Esperto di Simplesso"
-  created_at  timestamptz not null default now(),
-  unique (group_id, student_id)
-);
-
-create table if not exists matchmaking_pool (
-  id            uuid primary key default gen_random_uuid(),
-  tenant_id     uuid not null references tenants(id) on delete cascade,
-  course_id     uuid not null references courses(id) on delete cascade,
-  student_id    uuid not null references profiles(id) on delete cascade,
-  availability  text[] not null default '{}',   -- es. {'mon_pm','wed_am'}
-  active        boolean not null default true,
-  created_at    timestamptz not null default now(),
-  unique (course_id, student_id)
-);
-
 create table if not exists opportunities (
   id            uuid primary key default gen_random_uuid(),
   tenant_id     uuid not null references tenants(id) on delete cascade,
@@ -688,7 +667,7 @@ begin
     'topics','topic_prerequisites','documents','document_chunks','jobs',
     'quizzes','quiz_questions','exams','exam_drafts','exam_predictions',
     'question_clusters','student_questions','roleplay_scenarios',
-    'study_groups','study_group_members','matchmaking_pool','opportunities'
+    'opportunities'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists tenant_isolation on %I', t);

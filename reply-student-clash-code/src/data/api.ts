@@ -9,7 +9,6 @@ import type {
   MatchFeedback, DocumentChunk,
 } from '@/types/database';
 import type { Alert, CourseAggregates, DemoUser, ExamDetail, StudentCourseSummary } from '@/types/domain';
-import type { MatchedGroup } from '@/lib/matchmaking';
 import type { StudentMasteryVector } from '@/lib/prediction';
 import { createMockApi } from './mock/mockApi';
 import { createSupabaseApi } from './supabase/supabaseApi';
@@ -39,7 +38,6 @@ export interface DataApi {
   recordLearningEvent(ev: Pick<LearningEvent, 'student_id' | 'topic_id' | 'score' | 'difficulty' | 'weight' | 'source'>): Promise<Mastery>;
   getOpportunities(studentId: string): Promise<OpportunityWithMatch[]>;
   setOpportunityFeedback(studentId: string, opportunityId: string, feedback: MatchFeedback): Promise<void>;
-  getStudyGroup(studentId: string, courseId: string): Promise<{ group: MatchedGroup | null; topics: Topic[] }>;
   getNotifications(userId: string): Promise<Notification[]>;
 
   // Corso / materiali

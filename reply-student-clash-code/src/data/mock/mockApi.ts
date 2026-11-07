@@ -10,7 +10,6 @@ import { applyEvent } from '@/lib/mastery';
 import { computeReadiness } from '@/lib/readiness';
 import { computeAffinity } from '@/lib/affinity';
 import { classReadiness, readinessHistogram, topicDistributions } from '@/lib/classStats';
-import { matchGroups } from '@/lib/matchmaking';
 import { stableUuid } from '@/lib/random';
 import { round } from '@/lib/utils';
 
@@ -217,19 +216,6 @@ export function createMockApi(): DataApi {
       return delay(undefined, 60);
     },
 
-    getStudyGroup: (studentId, courseId) => {
-      const topics = topicsOf(courseId);
-      const pool = db.matchmakingPool
-        .filter((p) => p.course_id === courseId && p.active)
-        .map((p) => ({
-          id: p.student_id,
-          name: db.profiles.find((x) => x.id === p.student_id)!.full_name,
-          availability: p.availability,
-          mastery: Object.fromEntries(masteryOf(p.student_id, topics).map((m) => [m.topic_id, m.score])),
-        }));
-      const groups = matchGroups(pool, topics.map((t) => t.id));
-      return delay({ group: groups.find((g) => g.members.some((m) => m.id === studentId)) ?? null, topics });
-    },
 
     getNotifications: (userId) => delay(db.notifications.filter((n) => n.user_id === userId).sort((a, b) => b.created_at.localeCompare(a.created_at))),
 

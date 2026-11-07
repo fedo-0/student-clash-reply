@@ -12,7 +12,6 @@ export const qk = {
   skills: (sid: string) => ['skills', sid] as const,
   projects: (sid: string) => ['projects', sid] as const,
   opportunities: (sid: string) => ['opportunities', sid] as const,
-  studyGroup: (sid: string, cid: string) => ['studyGroup', sid, cid] as const,
   notifications: (uid: string) => ['notifications', uid] as const,
   topics: (cid: string) => ['topics', cid] as const,
   documents: (cid: string) => ['documents', cid] as const,
@@ -47,8 +46,6 @@ export const useStudentProjects = (sid?: string) =>
   useQuery({ queryKey: qk.projects(sid!), queryFn: () => api.getStudentProjects(sid!), enabled: enabled(sid) });
 export const useOpportunities = (sid?: string) =>
   useQuery({ queryKey: qk.opportunities(sid!), queryFn: () => api.getOpportunities(sid!), enabled: enabled(sid) });
-export const useStudyGroup = (sid?: string, cid?: string) =>
-  useQuery({ queryKey: qk.studyGroup(sid!, cid!), queryFn: () => api.getStudyGroup(sid!, cid!), enabled: enabled(sid, cid) });
 export const useNotifications = (uid?: string) =>
   useQuery({ queryKey: qk.notifications(uid!), queryFn: () => api.getNotifications(uid!), enabled: enabled(uid) });
 
@@ -74,7 +71,7 @@ export function useRecordLearningEvent() {
   return useMutation({
     mutationFn: (ev: Pick<LearningEvent, 'student_id' | 'topic_id' | 'score' | 'difficulty' | 'weight' | 'source'>) => api.recordLearningEvent(ev),
     onSuccess: () => {
-      for (const key of ['studentCourses', 'examDetail', 'aggregates', 'alerts', 'studyGroup', 'classVectors', 'opportunities']) {
+      for (const key of ['studentCourses', 'examDetail', 'aggregates', 'alerts', 'classVectors', 'opportunities']) {
         qc.invalidateQueries({ queryKey: [key] });
       }
     },

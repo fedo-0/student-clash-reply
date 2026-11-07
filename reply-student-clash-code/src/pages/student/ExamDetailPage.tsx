@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Bot, BookOpenCheck, CalendarDays, Sparkles } from 'lucide-react';
+import { ArrowLeft, Bot, BookOpenCheck, CalendarDays, Sparkles, Theater } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useCurrentUser } from '@/app/AuthContext';
 import { useExamDetail } from '@/data/hooks';
@@ -46,7 +46,10 @@ export function ExamDetailPage() {
             {data.nextSession && <span className="inline-flex items-center gap-1"><CalendarDays className="h-4 w-4" /> Scritto {fmtDate(data.nextSession.date, { weekday: 'long', day: 'numeric', month: 'long' })} · {fmtCountdown(days)}</span>}
           </span>
         }
-        actions={<Button asChild><Link to={`/student/tutor?course=${course.id}`}><Bot /> Chiedi al tutor</Link></Button>}
+        actions={<>
+          <Button variant="outline" asChild><Link to={`/student/roleplay?course=${course.id}`}><Theater /> Simula un caso reale</Link></Button>
+          <Button asChild><Link to={`/student/tutor?course=${course.id}`}><Bot /> Chiedi al tutor</Link></Button>
+        </>}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
