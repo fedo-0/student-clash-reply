@@ -284,6 +284,84 @@ export interface ExamPrediction extends Tenanted {
   ai_explanation: string | null;
 }
 
+// ---- Annunci d'esame ("job posting") -----------------------------------------
+/**
+ * L'esame visto come un annuncio di lavoro: il docente (l'"azienda") pubblica cosa serve per superarlo,
+ * lo studente (il "candidato") genera la corrispondenza tra il suo profilo e i requisiti.
+ */
+export type ExamRequirementKind = 'competence' | 'skill' | 'tool' | 'prerequisite';
+export type ExamRequirementImportance = 'required' | 'nice_to_have';
+
+export interface ExamRequirement {
+  id: string;
+  kind: ExamRequirementKind;
+  label: string;
+  description?: string;
+  importance: ExamRequirementImportance;
+  /** competenze: peso nell'esame (0..1). Altri tipi: 1 (required) o 0.5 (nice to have) */
+  weight: number;
+  /** competence: topic (anche di altri corsi) le cui mastery fanno da evidenza */
+  topic_ids?: UUID[];
+  /** prerequisite: nome dell'esame nel libretto */
+  exam_name?: string;
+}
+
+export interface ExamMaterial {
+  id: string;
+  kind: 'past_exam' | 'mockup' | 'solutions';
+  title: string;
+  date?: DateString;
+  pages?: number;
+  document_id?: UUID | null;
+}
+
+export interface ExamFormat {
+  type: 'written' | 'oral' | 'written_oral' | 'project_oral';
+  duration_min: number | null;
+  allowed_materials: string | null;
+  grading: string | null;
+}
+
+export interface ExamPosting extends Tenanted {
+  course_id: UUID;
+  created_by: UUID | null;
+  title: string;
+  /** "Informazioni sull'esame" */
+  about: string;
+  level: 'base' | 'intermediate' | 'advanced';
+  format: ExamFormat;
+  learning_outcomes: string[];
+  requirements: ExamRequirement[];
+  materials: ExamMaterial[];
+  status: 'draft' | 'published';
+  published_at: Timestamp | null;
+  updated_at: Timestamp;
+}
+
+export type ExamMatchStatus = 'met' | 'partial' | 'gap' | 'unverified' | 'new';
+
+export interface ExamMatchItem {
+  requirement_id: string;
+  score: number; // 0..100
+  status: ExamMatchStatus;
+  evidence: string[];
+}
+
+/** Elaborato AI salvato: i numeri li calcola src/lib/examMatch.ts, il testo l'LLM. */
+export interface ExamMatch extends Tenanted {
+  posting_id: UUID;
+  student_id: UUID;
+  score: number;
+  components: { competences: number | null; skills: number | null; prerequisites: number | null };
+  items: ExamMatchItem[];
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  improvements: { title: string; detail: string; link: string | null }[];
+  strategy: string[];
+  generated_at: Timestamp;
+}
+
 // ---- Interazioni AI ---------------------------------------------------------
 export interface Citation {
   document_id: UUID;

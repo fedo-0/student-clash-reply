@@ -7,6 +7,8 @@
  */
 import type { ChatMode, Citation, QuestionType, RoleplayAttitude, RoleplayDifficulty, RoleplayScenario, Topic } from '@/types/database';
 import { availableFacts, isEmpathetic, normalize, type RoleplayScore } from '@/lib/roleplay';
+import type { ExamMatchResult } from '@/lib/examMatch';
+import type { ExamMatch, ExamPosting } from '@/types/database';
 import type { TopicDistribution } from '@/lib/classStats';
 import type { PredictionResult } from '@/lib/prediction';
 import type { ReadinessResult } from '@/lib/readiness';
@@ -79,6 +81,21 @@ export interface RoleplayReport {
   nextStep: string;
 }
 
+/** Elaborato AI sulla corrispondenza esame-studente (solo testo: lo score lo calcola src/lib/examMatch.ts). */
+export type ExamMatchReport = Pick<ExamMatch, 'summary' | 'strengths' | 'weaknesses' | 'improvements' | 'strategy'>;
+
+export interface ExamMatchReportRequest {
+  posting: ExamPosting;
+  courseName: string;
+  teacherName: string;
+  studentName: string;
+  match: ExamMatchResult;
+  daysToExam: number | null;
+  /** topic → corso, per proporre link a tutor e quiz sulle materie dello studente */
+  topicCourse: Record<string, string>;
+  enrolledCourseIds: string[];
+}
+
 export interface AiClient {
   chatStream(req: ChatRequest): AsyncGenerator<ChatChunk>;
   recommendations(ctx: { studentName: string; courses: { id: string; name: string; readiness: ReadinessResult; daysToExam: number | null }[] }): Promise<Recommendation[]>;
@@ -94,6 +111,8 @@ export interface AiClient {
   roleplayReply(req: RoleplayRequest): AsyncGenerator<RoleplayChunk>;
   evaluateRoleplay(req: { scenario: RoleplayScenario; difficulty: RoleplayDifficulty; attitude: RoleplayAttitude; score: RoleplayScore; topicNames: Record<string, string> }): Promise<RoleplayReport>;
   extractCvSkills(fileName: string): Promise<{ name: string; level: number }[]>;
+  /** Elaborato "alla LinkedIn": corrispondenza tra annuncio d'esame e profilo dello studente. */
+  examMatchReport(req: ExamMatchReportRequest): Promise<ExamMatchReport>;
 }
 
 // ---- Helper mock ------------------------------------------------------------
@@ -336,6 +355,64 @@ const mockClient: AiClient = {
       missedQuestions: score.factsMissed.map((f) => f.hint),
       nextStep,
     };
+  },
+
+  async examMatchReport({ posting, courseName, teacherName, studentName, match, daysToExam, topicCourse, enrolledCourseIds }) {
+    await sleep(2200);
+    const first = studentName.split(' ')[0];
+    const byStatus = (st: string) => match.items.filter((i) => i.status === st);
+    // prima le competenze (il cuore dell'esame), poi skill/strumenti e propedeuticità
+    const kindOrder = { competence: 0, skill: 1, tool: 1, prerequisite: 2 } as const;
+    const met = [...byStatus('met')].sort((a, b) => kindOrder[a.requirement.kind] - kindOrder[b.requirement.kind] || b.score - a.score);
+    const metCompetences = met.filter((i) => i.requirement.kind === 'competence');
+    const gaps = [...match.items.filter((i) => i.status === 'gap' || i.status === 'partial')].sort((a, b) => b.requirement.weight * (100 - b.score) - a.requirement.weight * (100 - a.score));
+    const fresh = byStatus('new');
+    const unverified = byStatus('unverified');
+    const when = daysToExam == null ? '' : daysToExam > 60 ? ` L'appello è tra circa ${Math.round(daysToExam / 30)} mesi: hai il tempo di partire con calma.` : ` L'appello è tra ${daysToExam} giorni.`;
+
+    const summary = `${first}, la tua corrispondenza con "${courseName}" è del ${match.score}% (${match.label.toLowerCase()}). ` +
+      (metCompetences.length ? `Rispetto a ciò che ${teacherName.startsWith('Prof.ssa') ? 'la docente' : 'il docente'} chiede, sei già forte su: ${metCompetences.slice(0, 2).map((i) => i.requirement.label).join(' e ')}. ` : met.length ? `Hai già le basi richieste (${met.slice(0, 2).map((i) => i.requirement.label).join(', ')}). ` : '') +
+      (gaps.length ? (gaps[0].requirement.kind === 'prerequisite' ? `Il punto che oggi pesa di più è il propedeutico «${gaps[0].requirement.label}», non ancora superato. ` : `Il punto che oggi pesa di più è «${gaps[0].requirement.label}». `) : '') +
+      (fresh.length ? `${fresh.length} competenz${fresh.length === 1 ? 'a è nuova' : 'e sono nuove'} per te: le costruirai durante il corso.` : '') + when;
+
+    const strengths = met.slice(0, 4).map((i) => `${i.requirement.label} — ${i.evidence.slice(0, 2).join('; ')}`);
+    if (!strengths.length) strengths.push('Il tuo profilo è ancora poco collegato a questo esame: è normale se il corso non è ancora iniziato.');
+
+    const weaknesses = [
+      ...gaps.slice(0, 4).map((i) => `${i.requirement.label}${i.requirement.importance === 'required' ? ' (richiesto)' : ''} — ${i.evidence[0]}`),
+      ...unverified.slice(0, 2).map((i) => `${i.requirement.label} — pochi dati, il livello non è ancora affidabile`),
+    ];
+
+    const improvements: ExamMatchReport['improvements'] = [];
+    for (const i of [...gaps, ...unverified, ...fresh]) {
+      if (improvements.length >= 5) break;
+      const r = i.requirement;
+      const topic = r.topic_ids?.find((t) => enrolledCourseIds.includes(topicCourse[t]));
+      if (r.kind === 'competence' && topic && i.status !== 'new') {
+        const c = topicCourse[topic];
+        improvements.push(i.status === 'unverified'
+          ? { title: `Verifica: ${r.label}`, detail: 'Un quiz rapido per capire il tuo livello reale prima di studiarlo.', link: `/student/quiz?course=${c}&topic=${topic}` }
+          : { title: `Colma: ${r.label}`, detail: `Sessione guidata con il tutor AI, poi applicalo in una simulazione. Pesa il ${Math.round(r.weight * 100)}% dell'esame.`, link: `/student/tutor?course=${c}&topic=${topic}&mode=guided_gap` });
+      } else if (r.kind === 'competence' && i.status === 'new') {
+        improvements.push({ title: `Anticipa: ${r.label}`, detail: 'Argomento nuovo: guarda le prove passate pubblicate dal docente per capire che tipo di esercizi aspettarti.', link: null });
+      } else if (r.kind === 'prerequisite') {
+        improvements.push({ title: `Propedeuticità: ${r.label}`, detail: 'Conviene sostenere prima questo esame: le sue basi vengono date per scontate.', link: '/student/grades' });
+      } else if (r.kind === 'skill' || r.kind === 'tool') {
+        improvements.push({ title: `Aggiungi al profilo: ${r.label}`, detail: i.status === 'gap' ? 'Fai un piccolo progetto o un corso online e aggiungilo al profilo: conta anche per le opportunità.' : 'Rafforzala con un progetto pratico.', link: '/student/profile' });
+      }
+    }
+
+    const fmt = posting.format;
+    const strategy = [
+      fmt.type === 'written_oral' ? "Allo scritto parti dagli esercizi che pesano di più; all'orale preparati a spiegare il perché dei passaggi, non solo il risultato." : null,
+      fmt.type === 'written' ? 'Simula la prova a tempo: gestire bene i minuti conta quanto sapere gli argomenti.' : null,
+      fmt.type === 'project_oral' ? 'Il project work pesa di più: scegli un caso concreto e prepara una presentazione chiara di 10 minuti.' : null,
+      fmt.duration_min ? `Hai ${fmt.duration_min} minuti: allenati sulle prove passate rispettando lo stesso tempo.` : null,
+      fmt.allowed_materials ? `Materiale ammesso: ${fmt.allowed_materials}. Esercitati usando solo quello.` : null,
+      posting.materials.length ? `Il docente ha pubblicato ${posting.materials.length} materiali (prove passate e simulazioni): sono il modo migliore per capire cosa si aspetta.` : null,
+    ].filter(Boolean) as string[];
+
+    return { summary, strengths, weaknesses, improvements, strategy };
   },
 
   async extractCvSkills() {

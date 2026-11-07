@@ -1,7 +1,11 @@
 /** Hook TanStack Query sopra il data layer: le pagine usano solo questi. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import type { LearningEvent, MatchFeedback, StudentGoal } from '@/types/database';
+import type { ExamPosting, LearningEvent, MatchFeedback, StudentGoal } from '@/types/database';
+import type { ExamPostingView } from '@/types/domain';
+import { computeExamMatch } from '@/lib/examMatch';
+import { daysUntil } from '@/lib/dates';
+import { ai } from '@/ai/client';
 
 export const qk = {
   demoUsers: ['demoUsers'] as const,
@@ -13,6 +17,8 @@ export const qk = {
   projects: (sid: string) => ['projects', sid] as const,
   opportunities: (sid: string) => ['opportunities', sid] as const,
   notifications: (uid: string) => ['notifications', uid] as const,
+  examPostings: (sid: string) => ['examPostings', sid] as const,
+  teacherPostings: (tid: string) => ['teacherPostings', tid] as const,
   topics: (cid: string) => ['topics', cid] as const,
   documents: (cid: string) => ['documents', cid] as const,
   quizzes: (cid: string) => ['quizzes', cid] as const,
@@ -71,9 +77,64 @@ export function useRecordLearningEvent() {
   return useMutation({
     mutationFn: (ev: Pick<LearningEvent, 'student_id' | 'topic_id' | 'score' | 'difficulty' | 'weight' | 'source'>) => api.recordLearningEvent(ev),
     onSuccess: () => {
-      for (const key of ['studentCourses', 'examDetail', 'aggregates', 'alerts', 'classVectors', 'opportunities']) {
+      for (const key of ['studentCourses', 'examDetail', 'aggregates', 'alerts', 'classVectors', 'opportunities', 'examPostings']) {
         qc.invalidateQueries({ queryKey: [key] });
       }
+    },
+  });
+}
+
+// ---- Annunci d'esame -----------------------------------------------------------
+export const useStudentExamPostings = (sid?: string) =>
+  useQuery({ queryKey: qk.examPostings(sid!), queryFn: () => api.getStudentExamPostings(sid!), enabled: enabled(sid) });
+export const useTeacherExamPostings = (tid?: string) =>
+  useQuery({ queryKey: qk.teacherPostings(tid!), queryFn: () => api.getTeacherExamPostings(tid!), enabled: enabled(tid) });
+
+/**
+ * Genera la corrispondenza esame-studente:
+ * 1) dati del profilo dal data layer → 2) numeri calcolati da src/lib/examMatch.ts →
+ * 3) elaborato testuale dall'AI → 4) salvataggio. (In futuro 2-4 in una Edge Function.)
+ */
+export function useGenerateExamMatch(studentId: string, studentName: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (view: ExamPostingView) => {
+      const input = await api.getExamMatchInputs(studentId, view.posting.id);
+      const match = computeExamMatch(input);
+      const report = await ai.examMatchReport({
+        posting: view.posting,
+        courseName: view.course.name,
+        teacherName: view.teacher?.full_name ?? 'Docente',
+        studentName,
+        match,
+        daysToExam: daysUntil(view.nextSession?.date),
+        topicCourse: Object.fromEntries(input.topics.map((t) => [t.id, t.course_id])),
+        enrolledCourseIds: [...new Set(input.mastery.map((m) => input.topics.find((t) => t.id === m.topic_id)?.course_id).filter((x): x is string => !!x))],
+      });
+      return api.saveExamMatch({
+        posting_id: view.posting.id,
+        student_id: studentId,
+        score: match.score,
+        components: match.components,
+        items: match.items.map(({ requirement: _r, ...i }) => i),
+        ...report,
+        generated_at: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['examPostings'] });
+      qc.invalidateQueries({ queryKey: ['teacherPostings'] });
+    },
+  });
+}
+
+export function useUpdateExamPosting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: ExamPosting) => api.updateExamPosting(p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['teacherPostings'] });
+      qc.invalidateQueries({ queryKey: ['examPostings'] });
     },
   });
 }

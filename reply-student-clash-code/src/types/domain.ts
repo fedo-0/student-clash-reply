@@ -1,5 +1,5 @@
 /** Tipi derivati per la UI (composizioni dei tipi DB + risultati dei calcoli in src/lib). */
-import type { Course, ExamSession, Mastery, Profile, Topic, TopicPrerequisite } from './database';
+import type { Course, ExamMatch, ExamPosting, ExamRecord, ExamSession, Mastery, Profile, Topic, TopicPrerequisite } from './database';
 import type { ReadinessResult } from '@/lib/readiness';
 import type { AffinityResult } from '@/lib/affinity';
 import type { TopicDistribution } from '@/lib/classStats';
@@ -41,6 +41,27 @@ export interface CourseAggregates {
   engagement: { week: string; label: string; events: number; activeStudents: number }[];
   nextSession: ExamSession | null;
   atRiskCount: number;
+}
+
+/** Annuncio d'esame come lo vede lo studente. */
+export interface ExamPostingView {
+  posting: ExamPosting;
+  course: Course;
+  teacher: Profile | null;
+  nextSession: ExamSession | null;
+  record: ExamRecord | null;
+  match: ExamMatch | null;
+  /** readiness attuale se lo studente è iscritto al corso sulla piattaforma */
+  readiness: number | null;
+}
+
+/** Annuncio d'esame come lo vede il docente (con statistiche aggregate). */
+export interface TeacherPostingView {
+  posting: ExamPosting;
+  course: Course;
+  topics: Topic[];
+  matchesCount: number;
+  avgMatch: number | null;
 }
 
 export interface Alert {

@@ -465,6 +465,45 @@ create table if not exists exam_predictions (
   created_at      timestamptz not null default now()
 );
 
+-- Annuncio d'esame ("job posting"): il docente pubblica requisiti, skill, framework e prove passate
+create table if not exists exam_postings (
+  id                 uuid primary key default gen_random_uuid(),
+  tenant_id          uuid not null references tenants(id) on delete cascade,
+  course_id          uuid not null references courses(id) on delete cascade,
+  created_by         uuid references profiles(id) on delete set null,
+  title              text not null,
+  about              text not null default '',
+  level              text not null default 'intermediate' check (level in ('base','intermediate','advanced')),
+  format             jsonb not null default '{}',   -- {type, duration_min, allowed_materials, grading}
+  learning_outcomes  text[] not null default '{}',
+  requirements       jsonb not null default '[]',   -- [{id, kind: competence|skill|tool|prerequisite, label, importance, weight, topic_ids?, exam_name?}]
+  materials          jsonb not null default '[]',   -- [{id, kind: past_exam|mockup|solutions, title, date?, document_id?}]
+  status             text not null default 'draft' check (status in ('draft','published')),
+  published_at       timestamptz,
+  updated_at         timestamptz not null default now(),
+  created_at         timestamptz not null default now(),
+  unique (course_id)
+);
+
+-- Corrispondenza esame-studente generata dall'AI (numeri calcolati dal codice, testo dall'LLM)
+create table if not exists exam_matches (
+  id            uuid primary key default gen_random_uuid(),
+  tenant_id     uuid not null references tenants(id) on delete cascade,
+  posting_id    uuid not null references exam_postings(id) on delete cascade,
+  student_id    uuid not null references profiles(id) on delete cascade,
+  score         numeric(5,2) not null,
+  components    jsonb not null default '{}',   -- {competences, skills, prerequisites}
+  items         jsonb not null default '[]',   -- [{requirement_id, score, status, evidence[]}]
+  summary       text,
+  strengths     text[] not null default '{}',
+  weaknesses    text[] not null default '{}',
+  improvements  jsonb not null default '[]',   -- [{title, detail, link}]
+  strategy      text[] not null default '{}',
+  generated_at  timestamptz not null default now(),
+  created_at    timestamptz not null default now(),
+  unique (posting_id, student_id)
+);
+
 -- -----------------------------------------------------------------------------
 -- 7. Interazioni AI
 -- -----------------------------------------------------------------------------
@@ -666,7 +705,7 @@ begin
     'profiles','courses','course_staff','enrollments','exam_sessions','prerequisites',
     'topics','topic_prerequisites','documents','document_chunks','jobs',
     'quizzes','quiz_questions','exams','exam_drafts','exam_predictions',
-    'question_clusters','student_questions','roleplay_scenarios',
+    'question_clusters','student_questions','roleplay_scenarios','exam_postings',
     'opportunities'
   ] loop
     execute format('alter table %I enable row level security', t);
@@ -684,7 +723,7 @@ begin
   foreach t in array array[
     'student_goals','student_skills','student_projects','student_documents',
     'exam_records','learning_events','mastery','mastery_snapshots',
-    'quiz_attempts','chat_sessions','roleplay_evaluations','opportunity_matches'
+    'quiz_attempts','chat_sessions','roleplay_evaluations','opportunity_matches','exam_matches'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists owner_all on %I', t);

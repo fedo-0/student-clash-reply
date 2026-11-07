@@ -12,6 +12,10 @@ export const BIANCHI_KEY = 'bianchi';
 export const TEACHERS = [
   { key: ROSSI_KEY, full_name: 'Prof. Marco Rossi', email: 'marco.rossi@unidemo.it', department: 'Dipartimento di Ingegneria' },
   { key: BIANCHI_KEY, full_name: 'Prof.ssa Laura Bianchi', email: 'laura.bianchi@unidemo.it', department: 'Dipartimento di Medicina Clinica' },
+  // Docenti dei corsi del 2° semestre (non hanno login demo: servono come "aziende" degli annunci d'esame)
+  { key: 'conti', full_name: 'Prof.ssa Elena Conti', email: 'elena.conti@unidemo.it', department: 'Dipartimento di Ingegneria' },
+  { key: 'ferraris', full_name: 'Prof. Luca Ferraris', email: 'luca.ferraris@unidemo.it', department: 'Dipartimento di Ingegneria' },
+  { key: 'marchi', full_name: 'Prof. Andrea Marchi', email: 'andrea.marchi@unidemo.it', department: 'Dipartimento di Ingegneria' },
 ];
 
 const ING_NAMES = [
@@ -146,6 +150,10 @@ export const COURSES: CourseDef[] = [
   },
   // Corsi già conclusi (servono come propedeutici, senza topic)
   { key: 'an1', code: 'ING-AN1', name: 'Analisi Matematica I', degree_program: 'Ingegneria Gestionale', cfu: 12, year: 1, semester: 1, description: 'Limiti, derivate, integrali.', teacher: ROSSI_KEY, studentsFilter: 'none', examDate: null, relevantSkills: [], prerequisiteCourses: [], topics: [] },
+  // Corsi del 2° semestre ancora da seguire: hanno un annuncio d'esame ma nessuna attività sulla piattaforma
+  { key: 'gp', code: 'ING-GP', name: 'Gestione dei Progetti', degree_program: 'Ingegneria Gestionale', cfu: 6, year: 3, semester: 2, description: 'Pianificazione, controllo e gestione dei progetti.', teacher: 'conti', studentsFilter: 'none', examDate: '2027-06-15T09:00:00+02:00', relevantSkills: ['Project management', 'Excel'], prerequisiteCourses: [], topics: [] },
+  { key: 'log', code: 'ING-LOG', name: 'Logistica Industriale', degree_program: 'Ingegneria Gestionale', cfu: 6, year: 3, semester: 2, description: 'Gestione delle scorte, distribuzione e progettazione dei sistemi logistici.', teacher: 'ferraris', studentsFilter: 'none', examDate: '2027-06-24T09:00:00+02:00', relevantSkills: ['Excel', 'Python'], prerequisiteCourses: ['ro', 'stat'], topics: [] },
+  { key: 'imp', code: 'ING-IMP', name: 'Impianti Industriali', degree_program: 'Ingegneria Gestionale', cfu: 9, year: 3, semester: 2, description: 'Progettazione e gestione degli impianti produttivi.', teacher: 'marchi', studentsFilter: 'none', examDate: '2027-07-05T09:00:00+02:00', relevantSkills: ['Excel', 'Lean Manufacturing'], prerequisiteCourses: [], topics: [] },
   { key: 'gal', code: 'ING-GAL', name: 'Geometria e Algebra Lineare', degree_program: 'Ingegneria Gestionale', cfu: 9, year: 1, semester: 2, description: 'Spazi vettoriali, matrici, sistemi lineari.', teacher: ROSSI_KEY, studentsFilter: 'none', examDate: null, relevantSkills: [], prerequisiteCourses: [], topics: [] },
 ];
 
@@ -167,9 +175,9 @@ export const GIULIA_RECORDS: { name: string; cfu: number; grade: number | null; 
   // Da sostenere
   { name: 'Ricerca Operativa', cfu: 9, grade: null, date: null, courseKey: 'ro' },
   { name: 'Statistica', cfu: 6, grade: null, date: null, courseKey: 'stat' },
-  { name: 'Impianti Industriali', cfu: 9, grade: null, date: null },
-  { name: 'Gestione dei Progetti', cfu: 6, grade: null, date: null },
-  { name: 'Logistica Industriale', cfu: 6, grade: null, date: null },
+  { name: 'Impianti Industriali', cfu: 9, grade: null, date: null, courseKey: 'imp' },
+  { name: 'Gestione dei Progetti', cfu: 6, grade: null, date: null, courseKey: 'gp' },
+  { name: 'Logistica Industriale', cfu: 6, grade: null, date: null, courseKey: 'log' },
 ];
 
 export const GIULIA_SKILLS = [

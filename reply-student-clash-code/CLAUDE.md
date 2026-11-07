@@ -42,6 +42,23 @@ engagement) · Checkpoint + suggerimenti AI · Generatore quiz da PDF stile Note
 **Ponte**: loop di feedback quiz→mastery→mappa docente, domande→FAQ→risposta ufficiale→tutor.
 **Rimosso**: il gruppo di studio / matchmaking è stato eliminato come funzionalità (decisione del team).
 
+**Esami come annunci di lavoro (core feature)** — metafora LinkedIn: studenti = candidati, docenti = aziende,
+esami = offerte. Il docente pubblica un **annuncio d'esame** (`exam_postings`, pagina `/teacher/exams`,
+`src/pages/teacher/ExamPostingsPage.tsx`): informazioni, formato, livello, risultati attesi, **requisiti**
+(competenze con peso e topic collegati, skill, strumenti/framework, propedeuticità) e **prove passate/mockup**
+(upload simulato). Lo studente nella sezione **Esami** (`/student/exams[/:courseId]`, `ExamsPage.tsx`, lista +
+annuncio stile LinkedIn) vede tutti gli esami da sostenere e con un tasto genera la **corrispondenza esame-profilo**:
+un elaborato AI (non una chat) con score, punti di forza, punti deboli, dove migliorare (link a tutor/quiz/profilo),
+come affrontare l'esame e dettaglio requisito per requisito. Pipeline (`useGenerateExamMatch` in `hooks.ts`):
+`api.getExamMatchInputs` → `computeExamMatch` (`src/lib/examMatch.ts`, numeri: competenze da mastery anche di altri
+corsi, skill/strumenti da CV e progetti, propedeuticità dal libretto; pesi 0.6/0.25/0.15 come l'affinità;
+competenza mai praticata = "da costruire" con score 40) → `ai.examMatchReport` (solo testo) → `api.saveExamMatch`
+(`exam_matches`). Il docente vede solo aggregati (n. corrispondenze, media). Pulsante "Parla con il coach vocale"
+presente ma **non implementato** (arriverà dopo). La vecchia pagina readiness+affinità è ora
+`/student/exams/:courseId/preparazione` ("Preparazione dettagliata" dall'annuncio).
+Dati: `src/data/mock/examPostings.ts` (RO, Statistica + 3 corsi del 2° semestre senza attività: Gestione dei
+Progetti, Logistica Industriale, Impianti Industriali, con 3 docenti senza login demo).
+
 **Simulatore di consulenza** (`src/pages/student/RoleplayPage.tsx`): strumento di **preparazione a una materia**.
 Lo studente sceglie una delle sue materie (`?course=`); l'AI interpreta un cliente/paziente con un caso costruito
 sui **topic del corso**: ogni informazione nascosta (`RoleplayFact.topic_id`) corrisponde a un topic. Scenari in
@@ -80,9 +97,11 @@ src/index.css              token del tema (variabili CSS, light/dark)
 src/types/database.ts      tipi riga DB (snake_case, come lo schema)
 src/types/domain.ts        tipi derivati per la UI (readiness, affinità, ...)
 src/lib/                   funzioni pure: mastery, readiness, affinity, grades, prediction,
-                           roleplay (punteggio simulatore), random (PRNG seed), utils (cn)
+                           roleplay (punteggio simulatore), examMatch (corrispondenza esame-profilo),
+                           random (PRNG seed), utils (cn)
 src/data/api.ts            interfaccia DataApi + selezione implementazione
 src/data/mock/             generatore dati deterministico + implementazione mock
+                           (roleplay.ts = scenari simulatore, examPostings.ts = annunci d'esame)
 src/data/supabase/         stub implementazione Supabase
 src/data/hooks.ts          hook TanStack Query sopra l'api
 src/ai/client.ts           interfaccia AiClient + mock (chat stream, generateQuiz, gradeAnswer,
@@ -115,6 +134,8 @@ il 12/12 (tra 5 settimane), readiness ~58%, lacuna Dualità (23/100), PLI da ver
 Classe RO: 22 studenti, ~59% in rosso su Dualità, domanda 4 del quiz sbagliata dal 61%.
 Predizione scritto 12/12: media ~18,8, ~57% promossi, esercizi critici su Dualità e PLI.
 Loop live: rispondere al "Quiz settimana 3 – Dualità" alza la readiness (58% → 67% con 4 risposte giuste).
+Esami: corrispondenza RO di Giulia 73% (forte su modellazione/grafi, debole su dualità); Logistica 58%
+(RO non ancora superato, competenze nuove su scorte e magazzino). Docente RO: 17 corrispondenze, media 54%.
 Simulatore RO (Intermedia): facendo emergere obiettivo, flotta, furgone in affitto (dualità) e magazzino (flussi)
 la Dualità passa 23 → 38 e la readiness 58% → 70%.
 
@@ -123,5 +144,6 @@ la Dualità passa 23 → 38 e la readiness 58% → 70%.
 - Schermate complete: Studente Home, Dettaglio esame (readiness+affinità), Libretto; Docente Home, Overview classe.
 - Simulatore di consulenza completo: preparazione per materia, topic → learning_event, difficoltà, atteggiamento, report.
 - Libretto e Opportunità: confermati dal team così come sono.
+- Esami come annunci + corrispondenza AI: completo (coach vocale da implementare).
 - Schermate impostate ma semplificate: tutor, profilo, quiz, checkpoint, generatore quiz, predizione, FAQ.
 - Direzione: il focus del prototipo è l'**assistente AI** che accompagna lo studente nei vari passi.

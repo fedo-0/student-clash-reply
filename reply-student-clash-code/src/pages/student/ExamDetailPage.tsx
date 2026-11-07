@@ -37,7 +37,7 @@ export function ExamDetailPage() {
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="-ml-2 mb-2" asChild><Link to="/student"><ArrowLeft /> Home</Link></Button>
+      <Button variant="ghost" size="sm" className="-ml-2 mb-2" asChild><Link to={`/student/exams/${course.id}`}><ArrowLeft /> Annuncio d'esame</Link></Button>
       <PageHeader
         title={course.name}
         description={

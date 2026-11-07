@@ -8,7 +8,9 @@ import type {
   Quiz, QuizQuestion, RoleplayScenario, StudentGoal, StudentProject, StudentQuestion, StudentSkill, Tenant, Topic,
   MatchFeedback, DocumentChunk,
 } from '@/types/database';
-import type { Alert, CourseAggregates, DemoUser, ExamDetail, StudentCourseSummary } from '@/types/domain';
+import type { Alert, CourseAggregates, DemoUser, ExamDetail, ExamPostingView, StudentCourseSummary, TeacherPostingView } from '@/types/domain';
+import type { ExamMatch, ExamPosting } from '@/types/database';
+import type { ExamMatchInput } from '@/lib/examMatch';
 import type { StudentMasteryVector } from '@/lib/prediction';
 import { createMockApi } from './mock/mockApi';
 import { createSupabaseApi } from './supabase/supabaseApi';
@@ -39,6 +41,15 @@ export interface DataApi {
   getOpportunities(studentId: string): Promise<OpportunityWithMatch[]>;
   setOpportunityFeedback(studentId: string, opportunityId: string, feedback: MatchFeedback): Promise<void>;
   getNotifications(userId: string): Promise<Notification[]>;
+
+  // Annunci d'esame ("job posting")
+  /** Esami che lo studente deve ancora sostenere, presentati come annunci. */
+  getStudentExamPostings(studentId: string): Promise<ExamPostingView[]>;
+  /** Dati del profilo necessari a calcolare la corrispondenza (mastery, CV/skill, progetti, libretto). */
+  getExamMatchInputs(studentId: string, postingId: string): Promise<ExamMatchInput>;
+  saveExamMatch(match: Omit<ExamMatch, 'id' | 'tenant_id' | 'created_at'>): Promise<ExamMatch>;
+  getTeacherExamPostings(teacherId: string): Promise<TeacherPostingView[]>;
+  updateExamPosting(posting: ExamPosting): Promise<ExamPosting>;
 
   // Corso / materiali
   getCourse(courseId: string): Promise<Course>;

@@ -7,6 +7,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 // Studente
 import { StudentHomePage } from '@/pages/student/StudentHomePage';
 import { ExamDetailPage } from '@/pages/student/ExamDetailPage';
+import { ExamsPage } from '@/pages/student/ExamsPage';
 import { GradesPage } from '@/pages/student/GradesPage';
 import { ProfilePage } from '@/pages/student/ProfilePage';
 import { TutorPage } from '@/pages/student/TutorPage';
@@ -20,6 +21,7 @@ import { CheckpointPage } from '@/pages/teacher/CheckpointPage';
 import { QuizGeneratorPage } from '@/pages/teacher/QuizGeneratorPage';
 import { PredictionPage } from '@/pages/teacher/PredictionPage';
 import { FaqPage } from '@/pages/teacher/FaqPage';
+import { ExamPostingsPage } from '@/pages/teacher/ExamPostingsPage';
 
 function RequireRole({ role }: { role: UserRole }) {
   const { user, loading } = useAuth();
@@ -46,7 +48,9 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { index: true, element: <StudentHomePage /> },
-          { path: 'exams/:courseId', element: <ExamDetailPage /> },
+          { path: 'exams', element: <ExamsPage /> },
+          { path: 'exams/:courseId', element: <ExamsPage /> },
+          { path: 'exams/:courseId/preparazione', element: <ExamDetailPage /> },
           { path: 'grades', element: <GradesPage /> },
           { path: 'profile', element: <ProfilePage /> },
           { path: 'tutor', element: <TutorPage /> },
@@ -70,6 +74,7 @@ export const router = createBrowserRouter([
           { path: 'quiz-generator', element: <QuizGeneratorPage /> },
           { path: 'prediction', element: <PredictionPage /> },
           { path: 'faq', element: <FaqPage /> },
+          { path: 'exams', element: <ExamPostingsPage /> },
         ],
       },
     ],
