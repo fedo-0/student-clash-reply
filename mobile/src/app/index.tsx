@@ -1,98 +1,176 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { CourseDetailView } from '@/components/course-detail-view';
+import { CourseRow, ExamRow } from '@/components/course-row';
+import {
+  GlassContainer,
+  LiquidGlassBackdrop,
+  LiquidGlassCard,
+} from '@/components/liquid-glass';
+import { useProfile } from '@/context/profile-context';
+import { computeCourseScore } from '@/utils/score-calculator';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
+export default function CoursesScreen() {
+  const isDark = useColorScheme() === 'dark';
+  const {
+    activeProfile,
+    activeProfileId,
+    courses,
+    upcomingExams,
+    quizAttempts,
+  } = useProfile();
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedCourseId(null);
+  }, [activeProfileId]);
+
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId);
+
+  const textPrimary = isDark ? '#F5F7FA' : '#0F172A';
+  const textSecondary = isDark
+    ? 'rgba(235, 235, 245, 0.62)'
+    : 'rgba(15, 23, 42, 0.58)';
+  const accentColor = isDark ? '#38BDF8' : '#007AFF';
+
+  if (selectedCourse) {
     return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
+      <View style={styles.root}>
+        <LiquidGlassBackdrop />
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+          <CourseDetailView
+            course={selectedCourse}
+            onBack={() => setSelectedCourseId(null)}
+          />
+        </SafeAreaView>
+      </View>
     );
   }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <View style={styles.root}>
+      <LiquidGlassBackdrop />
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <ScrollView
+          contentInsetAdjustmentBehavior="never"
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: textPrimary }]}>Courses</Text>
+            <Text style={[styles.subtitle, { color: textSecondary }]}>
+              {activeProfile.course} · {activeProfile.yearOfStudy}
+            </Text>
+          </View>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+          <GlassContainer spacing={20} style={styles.sectionsContainer}>
+            {/* Courses Section */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionHeader, { color: textSecondary }]}>
+                COURSES
+              </Text>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+              <LiquidGlassCard style={styles.groupedCard}>
+                {courses.map((course, idx) => {
+                  const summary = computeCourseScore(course, quizAttempts);
+                  return (
+                    <CourseRow
+                      key={course.id}
+                      course={course}
+                      pendingCount={summary.pendingCount}
+                      showDivider={idx < courses.length - 1}
+                      onPress={() => setSelectedCourseId(course.id)}
+                    />
+                  );
+                })}
+              </LiquidGlassCard>
+            </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+            {/* Upcoming Exams Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionHeader, { color: textSecondary }]}>
+                  UPCOMING EXAMS
+                </Text>
+                <Text style={[styles.seeAllText, { color: accentColor }]}>
+                  See all ({upcomingExams.length})
+                </Text>
+              </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
+              <LiquidGlassCard style={styles.groupedCard}>
+                {upcomingExams.map((exam, idx) => (
+                  <ExamRow
+                    key={exam.id}
+                    exam={exam}
+                    showDivider={idx < upcomingExams.length - 1}
+                  />
+                ))}
+              </LiquidGlassCard>
+            </View>
+          </GlassContainer>
+        </ScrollView>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  scrollContent: {
+    paddingBottom: 110,
+    gap: 20,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    gap: 4,
   },
   title: {
-    textAlign: 'center',
+    fontSize: 34,
+    fontWeight: '700',
+    letterSpacing: 0.37,
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '500',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  sectionsContainer: {
+    gap: 24,
+  },
+  section: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 4,
+  },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    paddingHorizontal: 6,
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  groupedCard: {
+    paddingVertical: 4,
   },
 });
