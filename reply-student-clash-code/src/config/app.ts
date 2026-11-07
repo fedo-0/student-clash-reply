@@ -3,7 +3,7 @@
  * cambia qui il nome; la palette sta in src/index.css.
  */
 export const APP_CONFIG = {
-  name: 'AppName',
+  name: 'A.T.L.A.S',
   tagline: 'Sai sempre quanto sei pronto. Insegni sapendo cosa serve.',
   tenantName: 'Università Demo',
   /** Data "oggi" della demo: fissa per rendere la demo sempre uguale. */

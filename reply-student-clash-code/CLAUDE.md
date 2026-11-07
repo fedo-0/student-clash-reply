@@ -1,8 +1,8 @@
 # CLAUDE.md — Memoria di progetto
 
-> Prototipo da hackathon (mondo universitario). Nome definitivo, logo e palette **non ancora decisi**:
-> il nome segnaposto è `AppName` ed è definito **solo** in `src/config/app.ts`; il tema è in variabili
-> CSS in `src/index.css` (token mappati in `tailwind.config.ts`).
+> Prototipo da hackathon (mondo universitario). Nome: **A.T.L.A.S**, definito **solo** in `src/config/app.ts`
+> (più `<title>` in `index.html` e `name` in `package.json`). Logo e palette **non ancora decisi**: il tema è in
+> variabili CSS in `src/index.css` (token mappati in `tailwind.config.ts`).
 
 ## 1. Sintesi
 Piattaforma educativa **bidirezionale** potenziata dall'AI che collega in tempo reale lo studio degli
