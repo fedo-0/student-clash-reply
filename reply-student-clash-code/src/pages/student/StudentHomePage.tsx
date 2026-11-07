@@ -6,6 +6,7 @@ import { useExamRecords, useOpportunities, useStudentCourses, useStudentGoal } f
 import { ai, type Recommendation } from '@/ai/client';
 import { PageHeader, LoadingBlock, StatCard } from '@/components/common';
 import { ReadinessRing, TrendBadge, BandBadge } from '@/components/mastery';
+import { StudyBuddyWidget } from '@/components/StudyBuddyWidget';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -100,6 +101,9 @@ export function StudentHomePage() {
               })}
             </div>
           )}
+
+          {/* Gruppo di Studio Consigliato (P2P Matchmaking) */}
+          <StudyBuddyWidget />
 
           {/* Opportunità */}
           <div className="mb-3 mt-8 flex items-center justify-between">

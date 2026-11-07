@@ -10,6 +10,7 @@ import { applyEvent } from '@/lib/mastery';
 import { computeReadiness } from '@/lib/readiness';
 import { computeAffinity } from '@/lib/affinity';
 import { classReadiness, readinessHistogram, topicDistributions } from '@/lib/classStats';
+import { computeStudyBuddies } from '@/lib/matchmaking';
 import { stableUuid } from '@/lib/random';
 import { round } from '@/lib/utils';
 
@@ -214,6 +215,38 @@ export function createMockApi(): DataApi {
     setOpportunityFeedback: async (studentId, opportunityId, fb) => {
       feedback.set(`${studentId}:${opportunityId}`, fb);
       return delay(undefined, 60);
+    },
+
+    getStudyBuddies: (studentId, courseId) => {
+      let targetCourse = courseId ? db.courses.find((c) => c.id === courseId) : null;
+      if (!targetCourse) {
+        const studentEnrollments = db.enrollments.filter((e) => e.student_id === studentId && e.active);
+        const activeCourses = studentEnrollments
+          .map((e) => db.courses.find((c) => c.id === e.course_id)!)
+          .filter(Boolean);
+        targetCourse = activeCourses
+          .map((c) => ({ course: c, session: nextSessionOf(c.id) }))
+          .sort((a, b) => (a.session?.date ?? '9').localeCompare(b.session?.date ?? '9'))[0]?.course ?? activeCourses[0];
+      }
+      if (!targetCourse) return delay([]);
+
+      const topics = topicsOf(targetCourse.id);
+      const studentIds = studentsOf(targetCourse.id);
+      const candidates = db.profiles.filter((p) => studentIds.includes(p.id) && p.id !== studentId);
+      const topicIds = new Set(topics.map((t) => t.id));
+      const allCourseMastery = db.mastery.filter((m) => topicIds.has(m.topic_id));
+
+      const matches = computeStudyBuddies({
+        currentStudentId: studentId,
+        courseId: targetCourse.id,
+        courseName: targetCourse.name,
+        topics,
+        allCourseMastery,
+        candidates,
+        limit: 3,
+      });
+
+      return delay(matches, 120);
     },
 
 

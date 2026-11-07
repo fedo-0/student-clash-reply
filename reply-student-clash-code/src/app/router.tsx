@@ -12,6 +12,7 @@ import { ProfilePage } from '@/pages/student/ProfilePage';
 import { TutorPage } from '@/pages/student/TutorPage';
 import { QuizPage } from '@/pages/student/QuizPage';
 import { RoleplayPage } from '@/pages/student/RoleplayPage';
+import { StudyGroupPage } from '@/pages/student/StudyGroupPage';
 import { OpportunitiesPage } from '@/pages/student/OpportunitiesPage';
 // Docente
 import { TeacherHomePage } from '@/pages/teacher/TeacherHomePage';
@@ -52,6 +53,7 @@ export const router = createBrowserRouter([
           { path: 'tutor', element: <TutorPage /> },
           { path: 'quiz', element: <QuizPage /> },
           { path: 'roleplay', element: <RoleplayPage /> },
+          { path: 'study-group', element: <StudyGroupPage /> },
           { path: 'opportunities', element: <OpportunitiesPage /> },
         ],
       },

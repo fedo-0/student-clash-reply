@@ -10,6 +10,7 @@ import type {
 } from '@/types/database';
 import type { Alert, CourseAggregates, DemoUser, ExamDetail, StudentCourseSummary } from '@/types/domain';
 import type { StudentMasteryVector } from '@/lib/prediction';
+import type { StudyBuddyMatch } from '@/lib/matchmaking';
 import { createMockApi } from './mock/mockApi';
 import { createSupabaseApi } from './supabase/supabaseApi';
 
@@ -38,6 +39,7 @@ export interface DataApi {
   recordLearningEvent(ev: Pick<LearningEvent, 'student_id' | 'topic_id' | 'score' | 'difficulty' | 'weight' | 'source'>): Promise<Mastery>;
   getOpportunities(studentId: string): Promise<OpportunityWithMatch[]>;
   setOpportunityFeedback(studentId: string, opportunityId: string, feedback: MatchFeedback): Promise<void>;
+  getStudyBuddies(studentId: string, courseId?: string): Promise<StudyBuddyMatch[]>;
   getNotifications(userId: string): Promise<Notification[]>;
 
   // Corso / materiali

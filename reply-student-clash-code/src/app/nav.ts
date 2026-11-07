@@ -1,6 +1,6 @@
 import {
   BookOpenCheck, Bot, Briefcase, CalendarCheck, GraduationCap, Home, LayoutGrid, LineChart, MessageCircleQuestion,
-  Sparkles, Theater, UserRound, type LucideIcon,
+  Sparkles, Theater, UserRound, Users, type LucideIcon,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -18,6 +18,7 @@ export const STUDENT_NAV: NavItem[] = [
   { to: '/student/tutor', label: 'Tutor AI', icon: Bot, section: 'Studio' },
   { to: '/student/quiz', label: 'Quiz', icon: BookOpenCheck, section: 'Studio' },
   { to: '/student/roleplay', label: 'Simulatore', icon: Theater, section: 'Studio' },
+  { to: '/student/study-group', label: 'Gruppi di studio', icon: Users, section: 'Studio' },
   { to: '/student/opportunities', label: 'Opportunità', icon: Briefcase, section: 'Carriera' },
 ];
 

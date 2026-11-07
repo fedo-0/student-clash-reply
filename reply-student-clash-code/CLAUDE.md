@@ -39,8 +39,7 @@ boostato (media ponderata/aritmetica, base di laurea, obiettivo, slider what-if)
 engagement) · Checkpoint + suggerimenti AI · Generatore quiz da PDF stile NotebookLM · Predizione voti
 (logistica mastery−difficoltà + Monte Carlo; **i numeri li calcola il codice, l'LLM spiega**) · FAQ
 (cluster di domande anonime + risposta ufficiale).
-**Ponte**: loop di feedback quiz→mastery→mappa docente, domande→FAQ→risposta ufficiale→tutor.
-**Rimosso**: il gruppo di studio / matchmaking è stato eliminato come funzionalità (decisione del team).
+**Ponte**: matchmaking peer-to-peer gruppi di studio (su complementarità dei mastery per l'appello imminente) · loop di feedback quiz→mastery→mappa docente, domande→FAQ→risposta ufficiale→tutor.
 
 **Simulatore di consulenza** (`src/pages/student/RoleplayPage.tsx`): strumento di **preparazione a una materia**.
 Lo studente sceglie una delle sue materie (`?course=`); l'AI interpreta un cliente/paziente con un caso costruito
