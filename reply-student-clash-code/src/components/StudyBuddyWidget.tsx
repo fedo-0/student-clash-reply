@@ -5,15 +5,12 @@ import {
   Sparkles,
   ArrowRight,
   ArrowRightLeft,
-  Calendar,
-  Clock,
   MapPin,
   Send,
   CheckCircle2,
   X,
   BookOpen,
   GraduationCap,
-  MessageSquare,
 } from 'lucide-react';
 import { useCurrentUser } from '@/app/AuthContext';
 import { useStudentCourses, useStudyBuddies } from '@/data/hooks';
@@ -33,7 +30,6 @@ export function StudyBuddyWidget() {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
   const activeCourseId = selectedCourseId ?? courses?.[0]?.course.id;
-  const activeCourse = courses?.find((c) => c.course.id === activeCourseId) ?? courses?.[0];
 
   const { data: buddies, isLoading: loadingBuddies } = useStudyBuddies(user.id, activeCourseId);
 

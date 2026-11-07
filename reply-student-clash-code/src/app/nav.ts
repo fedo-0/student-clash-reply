@@ -1,6 +1,6 @@
 import {
-  BookOpenCheck, Bot, Briefcase, CalendarCheck, GraduationCap, Home, LayoutGrid, LineChart, MessageCircleQuestion,
-  Sparkles, Theater, UserRound, type LucideIcon,
+  BookOpenCheck, Bot, Briefcase, CalendarCheck, ClipboardList, GraduationCap, Home, LayoutGrid, LineChart, Megaphone, MessageCircleQuestion,
+  Sparkles, Theater, UserRound, Users, type LucideIcon,
 } from 'lucide-react';
 
 export interface NavItem {

@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   BookOpen,
   GraduationCap,
-  HelpCircle,
   Filter,
 } from 'lucide-react';
 import { useCurrentUser } from '@/app/AuthContext';
@@ -25,7 +24,7 @@ import { cn } from '@/lib/utils';
 
 export function StudyGroupPage() {
   const user = useCurrentUser();
-  const { data: courses, isLoading: loadingCourses } = useStudentCourses(user.id);
+  const { data: courses } = useStudentCourses(user.id);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const activeCourseId = selectedCourseId ?? courses?.[0]?.course.id;
